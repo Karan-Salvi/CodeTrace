@@ -13,10 +13,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/success" element={<AuthSuccess />} />
           <Route element={<AppShell />}>
             <Route path="/" element={<Navigate to="/repositories" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/success" element={<AuthSuccess />} />
             <Route path="/repositories" element={<Repositories />} />
             <Route path="/repositories/:id" element={<RepositoryLayout />}>
               <Route index element={<RepositoryOverview />} />
