@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: codetrace
+      POSTGRES_PASSWORD: codetrace_dev_password
+      POSTGRES_DB: codetrace
+    ports:
+      - "5433:5432"
+    volumes:
+      - codetrace_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codetrace -d codetrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "codetrace_dev_password"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - codetrace_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "codetrace_dev_password", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  codetrace_postgres_data:
+  codetrace_redis_data:
