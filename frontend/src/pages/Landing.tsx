@@ -88,7 +88,7 @@ export function Landing() {
         <div>
           <button
             onClick={handleLogin}
-            className="flex items-center text-[13px] font-medium text-white/70 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0070f3]"
+            className="flex items-center text-[13px] font-medium text-white/70 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0070f3] cursor-pointer"
           >
             Log In
           </button>
@@ -124,7 +124,7 @@ export function Landing() {
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-md w-full sm:w-auto">
               <button
                 onClick={handleLogin}
-                className="group relative flex items-center justify-center h-3xl rounded-[100px] bg-white px-xl text-[15px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white w-full sm:w-auto overflow-hidden shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+                className="group relative flex items-center justify-center h-3xl rounded-[100px] bg-white px-xl text-[15px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white w-full sm:w-auto overflow-hidden shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] cursor-pointer"
               >
                 <GithubIcon className="w-md h-md mr-xs" />
                 Log in with GitHub
@@ -132,7 +132,7 @@ export function Landing() {
               
               <a
                 href="#pipeline"
-                className="flex items-center justify-center h-3xl rounded-[100px] border border-white/20 bg-transparent px-xl text-[15px] font-medium text-white transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 w-full sm:w-auto"
+                className="flex items-center justify-center h-3xl rounded-[100px] border border-white/20 bg-transparent px-xl text-[15px] font-medium text-white transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 w-full sm:w-auto cursor-pointer"
               >
                 See how it works
               </a>
@@ -316,7 +316,7 @@ export function Landing() {
             </h2>
             <button
               onClick={handleLogin}
-              className="inline-flex items-center justify-center h-[56px] rounded-[100px] bg-white px-2xl text-[16px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white shadow-[0_0_30px_-5px_rgba(255,255,255,0.2)]"
+              className="inline-flex items-center justify-center h-[56px] rounded-[100px] bg-white px-2xl text-[16px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white shadow-[0_0_30px_-5px_rgba(255,255,255,0.2)] cursor-pointer"
             >
               <GithubIcon className="w-[20px] h-[20px] mr-sm" />
               Log in with GitHub
@@ -332,9 +332,9 @@ export function Landing() {
           <span>CodeTrace Inc. All rights reserved.</span>
         </div>
         <div className="flex space-x-lg">
-          <a href="#" className="hover:text-white transition-colors">GitHub Repository</a>
-          <a href="#" className="hover:text-white transition-colors">Terms</a>
-          <a href="#" className="hover:text-white transition-colors">Privacy</a>
+          <a href="#" className="hover:text-white transition-colors cursor-pointer">GitHub Repository</a>
+          <a href="#" className="hover:text-white transition-colors cursor-pointer">Terms</a>
+          <a href="#" className="hover:text-white transition-colors cursor-pointer">Privacy</a>
         </div>
       </footer>
 
