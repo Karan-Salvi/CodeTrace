@@ -6,6 +6,7 @@ import { webhooksRoutes } from "../modules/webhooks/routes/webhooks.routes.js";
 import { chatRoutes } from "../modules/chat/routes/chat.routes.js";
 import { prReviewRoutes } from "../modules/pr-review/routes/pr-review.routes.js";
 import { evaluationRoutes } from "../modules/evaluation/routes/evaluation.routes.js";
+import { indexingRoutes } from "../modules/indexing/routes/indexing.routes.js";
 
 export const rootRouter = Router();
 
@@ -16,3 +17,4 @@ rootRouter.use(webhooksRoutes);
 rootRouter.use(chatRoutes);
 rootRouter.use(prReviewRoutes);
 rootRouter.use(evaluationRoutes);
+rootRouter.use(indexingRoutes);
