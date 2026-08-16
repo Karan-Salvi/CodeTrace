@@ -285,3 +285,52 @@ async def test_full_index_resolves_same_named_symbols_to_their_own_file(tmp_path
     actual_edges = {(str(row[0]), str(row[1])) for row in rel_rows}
     assert actual_edges == expected_edges
     await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_full_index_skips_symlinked_files(tmp_path: Path) -> None:
+    # Regression (security.md: repository content is untrusted): os.walk
+    # lists a symlinked FILE in filenames even with the default
+    # followlinks=False (that flag only stops directory traversal), and
+    # open() transparently follows a symlink to its target. Git can
+    # commit symlinks (mode 120000) and a real Linux clone (the actual
+    # deployment target) recreates them as real filesystem symlinks — a
+    # user indexing their own repo could commit one pointing at an
+    # arbitrary host path and have its content silently read, embedded,
+    # and served back through chat/retrieval.
+    local_repo_path = _make_local_repo(tmp_path)
+
+    secret_target = tmp_path / "host-secret.txt"
+    secret_target.write_text("HOST_SECRET_SHOULD_NEVER_BE_INDEXED")
+    link_path = os.path.join(local_repo_path, "evil.ts")
+    try:
+        os.symlink(str(secret_target), link_path)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation not permitted in this environment (e.g. unprivileged Windows)")
+    subprocess.run(["git", "add", "."], cwd=local_repo_path, check=True)  # noqa: ASYNC221
+    subprocess.run(["git", "commit", "-m", "add symlink"], cwd=local_repo_path, check=True, capture_output=True)  # noqa: ASYNC221
+
+    get_engine.cache_clear()
+    engine = get_engine()
+    repository_id = await _seed_repository(engine)
+
+    with (
+        patch("src.indexing.full_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
+        patch("src.indexing.full_index.clone_repository", new_callable=AsyncMock, return_value=(local_repo_path, "sha-symlink")),
+        patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536])
+    ):
+        await run_full_index(repository_id, job_id="job-symlink-1")
+
+    async with engine.connect() as conn:
+        symlink_leak = (await conn.execute(
+            text("SELECT id FROM chunks WHERE repository_id = :rid AND content LIKE '%HOST_SECRET_SHOULD_NEVER_BE_INDEXED%'"),
+            {"rid": repository_id},
+        )).first()
+        evil_file = (await conn.execute(
+            text("SELECT id FROM files WHERE repository_id = :rid AND path = 'evil.ts'"),
+            {"rid": repository_id},
+        )).first()
+
+    assert symlink_leak is None
+    assert evil_file is None
+    await engine.dispose()

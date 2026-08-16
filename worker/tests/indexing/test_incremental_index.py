@@ -227,3 +227,56 @@ async def test_incremental_index_removes_stale_rows_when_a_changed_file_becomes_
     assert after is None
     assert chunks_after == 0
     await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_incremental_index_skips_symlinked_files(tmp_path: Path) -> None:
+    # See test_full_index.py's identical regression — same
+    # os.walk-lists-symlinks / open()-follows-symlinks gap, same fix,
+    # in the incremental pipeline's own walk loop.
+    get_engine.cache_clear()
+    engine = get_engine()
+    repository_id = await _seed_repository(engine)
+    local_repo_path, initial_sha = _make_local_repo(tmp_path)
+
+    with (
+        patch("src.indexing.full_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
+        patch("src.indexing.full_index.clone_repository", new_callable=AsyncMock, return_value=(local_repo_path, initial_sha)),
+        patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536])
+    ):
+        await run_full_index(repository_id, job_id="job-full-symlink-1")
+
+    secret_target = tmp_path / "host-secret.txt"
+    secret_target.write_text("HOST_SECRET_SHOULD_NEVER_BE_INDEXED")
+    link_path = os.path.join(local_repo_path, "evil.ts")
+    try:
+        os.symlink(str(secret_target), link_path)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation not permitted in this environment (e.g. unprivileged Windows)")
+    subprocess.run(["git", "add", "."], cwd=local_repo_path, check=True)  # noqa: ASYNC221
+    subprocess.run(["git", "commit", "-m", "add symlink"], cwd=local_repo_path, check=True, capture_output=True)  # noqa: ASYNC221
+    new_sha_result = subprocess.run(  # noqa: ASYNC221
+        ["git", "rev-parse", "HEAD"], cwd=local_repo_path, check=True, capture_output=True, text=True
+    )
+    new_sha = new_sha_result.stdout.strip()
+
+    with (
+        patch("src.indexing.incremental_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
+        patch("src.indexing.incremental_index.clone_or_reuse", new_callable=AsyncMock, return_value=(local_repo_path, new_sha)),
+        patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536])
+    ):
+        await run_incremental_index(repository_id, job_id="job-inc-symlink-1")
+
+    async with engine.connect() as conn:
+        symlink_leak = (await conn.execute(
+            text("SELECT id FROM chunks WHERE repository_id = :rid AND content LIKE '%HOST_SECRET_SHOULD_NEVER_BE_INDEXED%'"),
+            {"rid": repository_id},
+        )).first()
+        evil_file = (await conn.execute(
+            text("SELECT id FROM files WHERE repository_id = :rid AND path = 'evil.ts'"),
+            {"rid": repository_id},
+        )).first()
+
+    assert symlink_leak is None
+    assert evil_file is None
+    await engine.dispose()

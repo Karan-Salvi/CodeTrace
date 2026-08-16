@@ -158,6 +158,14 @@ async def run_incremental_index(repository_id: str, job_id: str) -> None:
                 if walk_targets is not None and rel_path not in walk_targets:
                     continue
 
+                # See full_index.py: os.walk lists symlinked files even
+                # with followlinks=False, and open() later would
+                # transparently follow one to an arbitrary host path. Git
+                # can commit symlinks and a real Linux clone recreates
+                # them — must skip before any stat/read.
+                if os.path.islink(full_path):
+                    continue
+
                 size_bytes = os.path.getsize(full_path)
                 ext = os.path.splitext(filename)[1]
                 language = LANGUAGE_BY_EXT.get(ext)

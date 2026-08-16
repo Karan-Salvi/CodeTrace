@@ -76,6 +76,23 @@ async def run_full_index(repository_id: str, job_id: str) -> None:
                 continue
             for filename in filenames:
                 full_path = os.path.join(root, filename)
+
+                # security.md: repository content is untrusted. Git can
+                # commit symlinks (mode 120000) and a real `git clone` on
+                # Linux (the actual deployment target) recreates them as
+                # real filesystem symlinks by default. os.walk's
+                # followlinks=False (the default, and what's used here)
+                # only stops directory traversal — it still lists a
+                # symlinked FILE in filenames, and a plain open() later
+                # transparently follows it. Without this check, any user
+                # indexing their own repo could commit a symlink pointing
+                # at an arbitrary host path (/etc/passwd, another
+                # process's env, etc.) and have its content silently
+                # read, embedded, and served back through chat/retrieval
+                # as if it were real repository code.
+                if os.path.islink(full_path):
+                    continue
+
                 rel_path = os.path.relpath(full_path, actual_repo_dir)
                 size_bytes = os.path.getsize(full_path)
 
