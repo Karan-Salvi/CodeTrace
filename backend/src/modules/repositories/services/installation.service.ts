@@ -50,3 +50,11 @@ export async function getActiveInstallation(id: string) {
   if (!installation || installation.revokedAt) return null;
   return installation;
 }
+
+export async function listInstallations(userId: string) {
+  return prisma.repositoryInstallation.findMany({
+    where: { userId, revokedAt: null },
+    select: { id: true, githubInstallationId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+}

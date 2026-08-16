@@ -8,10 +8,13 @@ import {
   deleteRepositoryHandler,
   getInstallationUrl,
   installationCallback,
+  getInstallations,
 } from "../controllers/repositories.controller.js";
 import { getInstallationToken } from "../controllers/internal.controller.js";
 
 export const repositoriesRoutes = Router();
+
+repositoriesRoutes.get("/repositories/installations", requireAuth, asyncHandler(getInstallations));
 
 repositoriesRoutes.post("/repositories", requireAuth, asyncHandler(postRepository));
 repositoriesRoutes.get("/repositories", requireAuth, asyncHandler(getRepositories));

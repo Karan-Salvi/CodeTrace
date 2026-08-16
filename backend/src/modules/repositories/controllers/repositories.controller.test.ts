@@ -234,5 +234,40 @@ describe("repositories routes", () => {
       expect(installations).toHaveLength(1);
       expect(installations[0].userId).toBe(user.id);
     });
+
+    it("GET /repositories/installations requires auth", async () => {
+      const res = await request(app).get("/repositories/installations");
+      expect(res.status).toBe(401);
+    });
+
+    it("GET /repositories/installations returns only the caller's non-revoked installations", async () => {
+      const { user, token } = await makeAuthedUser();
+      
+      // Valid installation for caller
+      await prisma.repositoryInstallation.create({
+        data: { userId: user.id, githubInstallationId: BigInt(10), permissions: {} },
+      });
+      
+      // Revoked installation for caller
+      await prisma.repositoryInstallation.create({
+        data: { userId: user.id, githubInstallationId: BigInt(11), permissions: {}, revokedAt: new Date() },
+      });
+
+      // Valid installation for other user
+      const otherUser = await prisma.user.create({
+        data: { githubId: BigInt(999), username: "other", githubAccessToken: "enc" },
+      });
+      await prisma.repositoryInstallation.create({
+        data: { userId: otherUser.id, githubInstallationId: BigInt(12), permissions: {} },
+      });
+
+      const res = await request(app)
+        .get("/repositories/installations")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].githubInstallationId).toBe("10");
+    });
   });
 });

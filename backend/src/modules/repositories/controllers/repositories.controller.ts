@@ -6,7 +6,7 @@ import {
   listRepositories,
   deleteRepository,
 } from "../services/repository.service.js";
-import { getInstallUrl, createInstallation } from "../services/installation.service.js";
+import { getInstallUrl, createInstallation, listInstallations } from "../services/installation.service.js";
 import { verifyAccessToken } from "../../auth/services/session.service.js";
 import { AppError } from "../../../core/errors/app-error.js";
 import { sendSuccess } from "../../../core/utils/response.js";
@@ -71,4 +71,14 @@ export async function installationCallback(req: Request, res: Response) {
   }
 
   res.redirect(`${env.CORS_ORIGIN}/repositories?installed=${parsed.data.setup_action}`);
+}
+
+export async function getInstallations(req: Request, res: Response) {
+  const installations = await listInstallations(req.user!.id);
+  // Convert BigInt to string before JSON serialization
+  const serialized = installations.map((inst) => ({
+    ...inst,
+    githubInstallationId: inst.githubInstallationId.toString(),
+  }));
+  sendSuccess(res, serialized);
 }
