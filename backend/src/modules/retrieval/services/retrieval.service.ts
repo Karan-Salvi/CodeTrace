@@ -1,8 +1,9 @@
 import { prisma } from "../../../database/client.js";
-import { RETRIEVAL_TOP_K, RETRIEVAL_FINAL_K } from "../../../config/constants.js";
+import { RETRIEVAL_TOP_K } from "../../../config/constants.js";
 import { vectorSearch } from "./vector-search.service.js";
 import { keywordSearch } from "./keyword-search.service.js";
 import { mergeRankings, classifyQuery } from "./rrf-merge.service.js";
+import { rerank } from "./reranker.service.js";
 import type { RetrievedChunk } from "../types/retrieval.types.js";
 
 export type EmbedQueryFn = (text: string) => Promise<number[]>;
@@ -21,18 +22,18 @@ export async function retrieveContext(
   ]);
 
   const merged = mergeRankings(vectorResults, keywordResults, { queryType });
-  const topChunkIds = merged.slice(0, RETRIEVAL_FINAL_K).map((r) => r.chunkId);
+  const candidateChunkIds = merged.slice(0, RETRIEVAL_TOP_K).map((r) => r.chunkId);
 
-  if (topChunkIds.length === 0) return [];
+  if (candidateChunkIds.length === 0) return [];
 
   const chunks = await prisma.chunk.findMany({
-    where: { id: { in: topChunkIds } },
+    where: { id: { in: candidateChunkIds } },
     include: { file: { select: { path: true } } },
   });
 
   const chunkById = new Map(chunks.map((c) => [c.id, c]));
 
-  return topChunkIds
+  const candidates: RetrievedChunk[] = candidateChunkIds
     .map((id) => chunkById.get(id))
     .filter((c): c is NonNullable<typeof c> => c !== undefined)
     .map((c) => ({
@@ -48,4 +49,6 @@ export async function retrieveContext(
       content: c.content,
       filePath: c.file.path,
     }));
+
+  return rerank(queryText, candidates);
 }

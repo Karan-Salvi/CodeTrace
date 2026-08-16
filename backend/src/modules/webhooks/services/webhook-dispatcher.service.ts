@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../../database/client.js";
-import { enqueueIndexJob } from "../../../queues/producers/index-job.producer.js";
 import { enqueuePrReviewJob } from "../../../queues/producers/pr-review.producer.js";
 import { revokeInstallation } from "../../repositories/services/installation.service.js";
+import { createAndEnqueueIndexJob } from "../../indexing/services/index-job.service.js";
+import { AppError } from "../../../core/errors/app-error.js";
 import type {
   GitHubPushEvent,
   GitHubPullRequestEvent,
@@ -34,16 +35,16 @@ export async function handlePushEvent(payload: GitHubPushEvent): Promise<void> {
   });
   if (!repository) return;
 
-  await prisma.repository.update({
-    where: { id: repository.id },
-    data: { status: "PENDING" },
-  });
-
-  await enqueueIndexJob({
-    jobId: randomUUID(),
-    repositoryId: repository.id,
-    type: "INCREMENTAL",
-  });
+  try {
+    await createAndEnqueueIndexJob(repository.id, "INCREMENTAL", repository.status);
+  } catch (err: unknown) {
+    if (err instanceof AppError && err.code === "ALREADY_INDEXING") {
+      // A push arriving while this repo is already being indexed is
+      // expected/benign for a webhook (not a user error to surface).
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function handlePullRequestEvent(payload: GitHubPullRequestEvent): Promise<void> {

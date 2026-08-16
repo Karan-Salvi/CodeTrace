@@ -53,6 +53,7 @@ describe("POST /webhooks/github", () => {
         name: "hello-world",
         githubUrl: "https://github.com/octocat/hello-world",
         defaultBranch: "main",
+        status: "INDEXED",
       },
     });
 
@@ -97,6 +98,7 @@ describe("POST /webhooks/github", () => {
         name: "repo2",
         githubUrl: "https://github.com/octocat2/repo2",
         defaultBranch: "main",
+        status: "INDEXED",
       },
     });
 
@@ -144,6 +146,7 @@ describe("POST /webhooks/github", () => {
         name: "repo",
         githubUrl: "https://github.com/racer/repo",
         defaultBranch: "main",
+        status: "INDEXED",
       },
     });
 

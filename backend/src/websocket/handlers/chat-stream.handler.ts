@@ -1,7 +1,16 @@
 import type { WebSocket } from "ws";
 import { verifyAccessToken } from "../../modules/auth/services/session.service.js";
 import { askQuestion } from "../../modules/chat/services/chat.service.js";
+import { checkRateLimit } from "../../core/middlewares/rate-limit.middleware.js";
 import { prisma } from "../../database/client.js";
+
+// why this number: chat.routes.ts's HTTP rate limiter only covers
+// conversation *creation*, not individual messages — this is the actual
+// per-message LLM-cost driver security.md's "/chat" rate-limiting
+// requirement targets. A real back-and-forth conversation can
+// reasonably send several messages a minute; 20/min gives headroom for
+// normal use while still bounding a scripted-spam worst case.
+const CHAT_MESSAGE_RATE_LIMIT = { windowMs: 60_000, max: 20 };
 
 interface ChatMessage {
   type: "chat";
@@ -25,6 +34,12 @@ export async function handleChatMessage(ws: WebSocket, raw: string): Promise<voi
   const payload = verifyAccessToken(message.token);
   if (!payload) {
     ws.send(JSON.stringify({ type: "error", message: "Unauthorized" }));
+    return;
+  }
+
+  const withinLimit = await checkRateLimit(payload.userId, CHAT_MESSAGE_RATE_LIMIT);
+  if (!withinLimit) {
+    ws.send(JSON.stringify({ type: "error", message: "Too many requests" }));
     return;
   }
 

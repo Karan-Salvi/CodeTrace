@@ -13,27 +13,18 @@ const NON_TERMINAL_STATUSES: RepositoryStatus[] = [
   "STORING",
 ];
 
-export async function triggerFullIndex(userId: string, repositoryId: string) {
-  const repository = await getOwnedRepository(userId, repositoryId);
-
-  if (NON_TERMINAL_STATUSES.includes(repository.status)) {
+export async function createAndEnqueueIndexJob(
+  repositoryId: string,
+  type: "FULL" | "INCREMENTAL",
+  currentStatus: RepositoryStatus
+) {
+  if (NON_TERMINAL_STATUSES.includes(currentStatus)) {
     throw AppError.conflict("ALREADY_INDEXING", "Repository is already actively indexing");
   }
 
-  // Reading repository.status above and writing it below are two
-  // separate round-trips — not atomic with each other. Two concurrent
-  // requests can both read the same terminal status before either
-  // commits, both pass the check above, and both create a job for the
-  // same repository (confirmed via a concurrent-request test). Guard the
-  // actual write with the status this request observed: updateMany's
-  // WHERE clause only matches (and only returns count: 1) if the row is
-  // still in that exact status at write time — the second concurrent
-  // request's updateMany matches zero rows because the first request's
-  // transaction already moved it to PENDING, so it fails this check
-  // instead of silently also succeeding.
   const indexJob = await prisma.$transaction(async (tx) => {
     const updateResult = await tx.repository.updateMany({
-      where: { id: repositoryId, status: repository.status },
+      where: { id: repositoryId, status: currentStatus },
       data: { status: "PENDING" },
     });
     if (updateResult.count === 0) {
@@ -42,7 +33,7 @@ export async function triggerFullIndex(userId: string, repositoryId: string) {
     return tx.indexJob.create({
       data: {
         repositoryId,
-        type: "FULL",
+        type,
         status: "PENDING",
       },
     });
@@ -51,8 +42,14 @@ export async function triggerFullIndex(userId: string, repositoryId: string) {
   await enqueueIndexJob({
     jobId: indexJob.id,
     repositoryId,
-    type: "FULL",
+    type,
   });
 
   return indexJob;
+}
+
+export async function triggerFullIndex(userId: string, repositoryId: string) {
+  const repository = await getOwnedRepository(userId, repositoryId);
+
+  return createAndEnqueueIndexJob(repositoryId, "FULL", repository.status);
 }

@@ -28,6 +28,7 @@ const envSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string().min(1),
 
   GEMINI_API_KEY: z.string().min(1),
+  JINA_API_KEY: z.string().min(1),
   LLM_PROVIDER: z.string().default("gemini"),
   EMBEDDING_PROVIDER: z.string().default("gemini"),
   EMBEDDING_MODEL_VERSION: z.string().min(1),
