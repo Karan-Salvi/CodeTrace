@@ -1,0 +1,25 @@
+# CodeTrace worker — dev image. Includes dev/test tooling (pytest, mypy,
+# ruff) and git for the runtime `git clone`/`git diff` calls
+# (src/github/clone.py, src/indexing/incremental_index.py). Not
+# multi-stage — dev iteration speed matters more than image size here;
+# infra/docker-compose.dev.yml is expected to bind-mount worker/src and
+# worker/tests over this image so code changes don't require a rebuild.
+
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+
+# Exec form — same signal-forwarding reason as the production Dockerfile.
+CMD ["python", "-m", "src.main"]

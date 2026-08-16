@@ -1,0 +1,13 @@
+pyproject.toml
+src/codetrace_worker.egg-info/PKG-INFO
+src/codetrace_worker.egg-info/SOURCES.txt
+src/codetrace_worker.egg-info/dependency_links.txt
+src/codetrace_worker.egg-info/requires.txt
+src/codetrace_worker.egg-info/top_level.txt
+src/embedding/batcher.py
+src/embedding/cache.py
+src/embedding/embedder.py
+src/indexing/full_index.py
+src/indexing/incremental_index.py
+src/indexing/secret_filter.py
+src/parsing/ast_chunker.py
