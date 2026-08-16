@@ -1,5 +1,14 @@
+import "dotenv/config";
 import { z } from "zod";
 
+// "dotenv" was a declared dependency but never actually imported
+// anywhere — .env only got loaded when a test runner (vitest) or `tsx
+// --env-file` happened to load it independently; `npm run dev` (plain
+// `tsx watch src/server.ts`) never read .env at all, silently failing
+// with "Invalid environment configuration" for every var. This is the
+// one place all env access funnels through (loadEnv() below reads
+// process.env), so importing dotenv/config here — before that read —
+// is enough to fix every entrypoint at once, no per-script flag needed.
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
