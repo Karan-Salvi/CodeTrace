@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createApp } from "../../../app.js";
 import { prisma } from "../../../database/client.js";
+import { env } from "../../../config/env.js";
 import * as githubOauth from "../services/github-oauth.service.js";
 
 describe("auth routes", () => {
@@ -73,7 +74,11 @@ describe("auth routes", () => {
       .query({ code: "fake-code-2", state: extractState(stateCookie) });
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("/auth/success");
+    // Regression: this used to be a relative "/auth/success", which
+    // stays on the backend's own origin — the frontend runs on a
+    // different origin (CORS_ORIGIN) in every real deployment, so that
+    // redirect 404'd. Must land on the frontend's own origin.
+    expect(res.headers.location).toBe(`${env.CORS_ORIGIN}/auth/success`);
     expect(res.headers.location).not.toContain("token=");
   });
 

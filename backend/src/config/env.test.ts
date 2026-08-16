@@ -10,6 +10,7 @@ describe("env config", () => {
     process.env.GITHUB_CLIENT_ID = "id";
     process.env.GITHUB_CLIENT_SECRET = "secret";
     process.env.GITHUB_APP_ID = "1";
+    process.env.GITHUB_APP_SLUG = "codetrace-app";
     process.env.GITHUB_APP_PRIVATE_KEY = "key";
     process.env.GITHUB_WEBHOOK_SECRET = "whsecret";
     process.env.GEMINI_API_KEY = "gk";

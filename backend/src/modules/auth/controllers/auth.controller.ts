@@ -60,7 +60,12 @@ export async function githubCallback(req: Request, res: Response) {
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 
-  res.redirect("/auth/success");
+  // Bug: this used to be a relative redirect ("/auth/success"), which
+  // stays on the BACKEND's own origin — the frontend runs on a different
+  // origin/port (CORS_ORIGIN) in every real deployment, so the browser
+  // would 404 here since the backend has no such route. Must redirect to
+  // the frontend's own /auth/success page.
+  res.redirect(`${env.CORS_ORIGIN}/auth/success`);
 }
 
 export async function refresh(req: Request, res: Response) {

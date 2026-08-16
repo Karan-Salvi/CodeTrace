@@ -163,4 +163,76 @@ describe("repositories routes", () => {
     const res = await request(app).delete(`/repositories/${repo.id}`).set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(404);
   });
+
+  describe("GitHub App installation flow", () => {
+    it("GET /repositories/installation-url requires auth", async () => {
+      const res = await request(app).get("/repositories/installation-url");
+      expect(res.status).toBe(401);
+    });
+
+    it("GET /repositories/installation-url returns a GitHub install URL with the caller's access token as state", async () => {
+      const { token } = await makeAuthedUser();
+      const res = await request(app)
+        .get("/repositories/installation-url")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.url).toContain("https://github.com/apps/");
+      expect(res.body.data.url).toContain("/installations/new?state=");
+      expect(res.body.data.url).toContain(encodeURIComponent(token));
+    });
+
+    it("GET /repositories/installation-callback creates a RepositoryInstallation tied to the state's user", async () => {
+      // Regression: before this fix, nothing anywhere in the backend
+      // ever called createInstallation — handleInstallationEvent only
+      // handled deleted/suspend, so a RepositoryInstallation row could
+      // never exist and POST /repositories (which requires a real
+      // installationId) was permanently unusable for any real user.
+      const { user, token } = await makeAuthedUser();
+
+      const res = await request(app)
+        .get("/repositories/installation-callback")
+        .query({ installation_id: "999888", state: token, setup_action: "install" });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain(`${env.CORS_ORIGIN}/repositories`);
+
+      const installation = await prisma.repositoryInstallation.findUnique({
+        where: { githubInstallationId: BigInt(999888) },
+      });
+      expect(installation).not.toBeNull();
+      expect(installation?.userId).toBe(user.id);
+      expect(installation?.revokedAt).toBeNull();
+    });
+
+    it("GET /repositories/installation-callback rejects an invalid or expired state", async () => {
+      const res = await request(app)
+        .get("/repositories/installation-callback")
+        .query({ installation_id: "111222", state: "not-a-real-token", setup_action: "install" });
+
+      expect(res.status).toBe(401);
+      const installation = await prisma.repositoryInstallation.findUnique({
+        where: { githubInstallationId: BigInt(111222) },
+      });
+      expect(installation).toBeNull();
+    });
+
+    it("GET /repositories/installation-callback is idempotent for the same githubInstallationId", async () => {
+      const { user, token } = await makeAuthedUser();
+
+      await request(app)
+        .get("/repositories/installation-callback")
+        .query({ installation_id: "333444", state: token, setup_action: "install" });
+      const res2 = await request(app)
+        .get("/repositories/installation-callback")
+        .query({ installation_id: "333444", state: token, setup_action: "install" });
+
+      expect(res2.status).toBe(302);
+      const installations = await prisma.repositoryInstallation.findMany({
+        where: { githubInstallationId: BigInt(333444) },
+      });
+      expect(installations).toHaveLength(1);
+      expect(installations[0].userId).toBe(user.id);
+    });
+  });
 });
