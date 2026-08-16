@@ -88,7 +88,7 @@ export function Landing() {
         <div>
           <button
             onClick={handleLogin}
-            className="flex items-center text-[13px] font-medium text-white/70 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0070f3] cursor-pointer"
+            className="group relative flex items-center justify-center h-[40px] rounded-[8px] bg-white px-lg text-[14px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white w-full sm:w-auto overflow-hidden shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] cursor-pointer"
           >
             Log In
           </button>
