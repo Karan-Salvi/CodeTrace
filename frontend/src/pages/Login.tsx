@@ -2,6 +2,7 @@ import { Navigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { motion } from "framer-motion";
+import type { Variants, Transition } from "framer-motion";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -27,8 +28,10 @@ const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
     xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <polyline points="16 18 22 12 16 6" />
-    <polyline points="8 6 2 12 8 18" />
+    <path d="M3.5 21 14 3"/>
+    <path d="M20.5 21 10 3"/>
+    <path d="M15.5 21 12 15l-3.5 6"/>
+    <path d="M2 21h20"/>
   </svg>
 );
 
@@ -48,7 +51,7 @@ const BackIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -56,7 +59,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -65,7 +68,7 @@ const itemVariants = {
   },
 };
 
-const pathTransition = (delay: number) => ({
+const pathTransition = (delay: number): Transition => ({
   pathLength: { duration: 2, ease: "easeInOut", delay },
   opacity: { duration: 2, ease: "easeInOut", delay },
   strokeDashoffset: {

@@ -1,16 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #ededed;
-  --color-on-primary: #000000;
-  --color-ink: #ededed;
-  --color-body: #a1a1aa;
-  --color-mute: #71717a;
-  --color-hairline: #27272a;
-  --color-hairline-strong: #3f3f46;
-  --color-canvas: #000000;
-  --color-canvas-soft: #0a0a0a;
-  --color-canvas-soft-2: #111111;
+  --font-sans: 'Cascadia Code', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  /* Theme-mapped variables (so Tailwind picks them up) */
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-mute: var(--mute);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-soft-2: var(--canvas-soft-2);
+
   --color-success: #0070f3;
   --color-error: #ee0000;
   --color-error-soft: #f7d4d6;
@@ -18,9 +23,6 @@
   --color-warning: #f5a623;
   --color-warning-soft: #ffefcf;
   --color-warning-deep: #ab570a;
-
-  --font-sans: 'Cascadia Code', 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 
   --radius-none: 0px;
   --radius-xs: 4px;
@@ -44,6 +46,34 @@
   --spacing-5xl: 96px;
   --spacing-6xl: 128px;
   --spacing-section: 192px;
+}
+
+@layer base {
+  :root, .dark {
+    --primary: #ededed;
+    --on-primary: #000000;
+    --ink: #ededed;
+    --body: #a1a1aa;
+    --mute: #71717a;
+    --hairline: #27272a;
+    --hairline-strong: #3f3f46;
+    --canvas: #000000;
+    --canvas-soft: #0a0a0a;
+    --canvas-soft-2: #111111;
+  }
+
+  .light {
+    --primary: #171717;
+    --on-primary: #ffffff;
+    --ink: #171717;
+    --body: #666666;
+    --mute: #888888;
+    --hairline: #eaeaea;
+    --hairline-strong: #888888;
+    --canvas: #ffffff;
+    --canvas-soft: #fafafa;
+    --canvas-soft-2: #f5f5f5;
+  }
 }
 
 @layer base {
