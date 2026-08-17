@@ -34,23 +34,23 @@ export function VercelNavbar() {
 
   return (
     <div
-      className={`flex sticky px-4 z-50 top-0 w-full bg-background items-center h-16 justify-between transition-border duration-300 ${
-        scrolled ? "border-b border-white/10 backdrop-blur-md bg-background/80" : "border-b-0"
+      className={`flex sticky px-4 z-50 top-0 w-full bg-canvas items-center h-16 justify-between transition-border duration-300 ${
+        scrolled ? "border-b border-white/10 shadow-md" : "border-b-0"
       }`}
     >
       <div className="flex items-center justify-between w-full mx-auto max-w-7xl">
         {/* Brand */}
         <div className="flex h-14 items-center">
-          <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+          <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80 cursor-pointer">
             <BrandLogo className="w-6 h-6 text-white" />
             <span className="font-bold text-lg text-white">CodeTrace</span>
           </Link>
           
           {/* Main Links */}
           <nav className="ml-8 hidden md:flex items-center space-x-6 text-sm font-medium text-muted-foreground">
-            <Link to="/docs" className="hover:text-white transition-colors">Docs</Link>
+            <Link to="/docs" className="hover:text-white transition-colors cursor-pointer">Docs</Link>
             {token && (
-              <Link to="/repositories" className="hover:text-white transition-colors">Dashboard</Link>
+              <Link to="/repositories" className="hover:text-white transition-colors cursor-pointer">Dashboard</Link>
             )}
           </nav>
         </div>
@@ -70,7 +70,7 @@ export function VercelNavbar() {
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 p-2 rounded-xl bg-background border-white/10" align="end">
+              <DropdownMenuContent className="w-56 p-2 rounded-xl bg-canvas-soft border border-white/10 shadow-lg" align="end">
                 <div className="p-2 pb-4">
                   <h1 className="font-semibold text-sm">Developer</h1>
                   <p className="text-xs text-muted-foreground">user@codetrace.dev</p>

@@ -181,7 +181,7 @@ export function Navbar() {
         
         {/* Left: Brand & Main Nav */}
         <div className="flex items-center space-x-xl">
-          <Link to="/" className="flex items-center space-x-2 text-ink hover:opacity-80 transition-opacity">
+          <Link to="/" className="flex items-center space-x-2 text-ink hover:opacity-80 transition-opacity cursor-pointer">
             <BrandLogo className="h-6 w-6" />
             <span className="font-semibold text-[16px] tracking-tight">CodeTrace</span>
           </Link>
@@ -262,7 +262,7 @@ export function Navbar() {
                     
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center px-sm py-2 text-[14px] text-error hover:bg-error-soft rounded-sm transition-colors text-left"
+                      className="flex w-full items-center px-sm py-2 text-[14px] text-error hover:bg-error-soft rounded-sm transition-colors text-left cursor-pointer"
                     >
                       <LogOutIcon className="mr-2 h-4 w-4" />
                       Log out

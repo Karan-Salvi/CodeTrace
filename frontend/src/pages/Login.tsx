@@ -198,7 +198,7 @@ export function Login() {
       >
         <Link
           to="/"
-          className="absolute top-lg right-lg lg:top-xl lg:right-xl flex items-center space-x-2 text-[14px] font-medium text-mute hover:text-ink transition-colors"
+          className="absolute top-lg right-lg lg:top-xl lg:right-xl flex items-center space-x-2 text-[14px] font-medium text-mute hover:text-ink transition-colors cursor-pointer"
         >
           <BackIcon className="w-4 h-4" />
           <span>Home</span>
