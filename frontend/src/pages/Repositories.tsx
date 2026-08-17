@@ -81,7 +81,7 @@ export function Repositories() {
 
   if (isConnecting) {
     return (
-      <div className="max-w-xl mx-auto mt-xl">
+      <div className="max-w-[600px] mx-auto mt-xl">
         <div className="flex items-center justify-between mb-lg">
           <h1 className="text-display-md tracking-[-0.96px] text-ink font-semibold">Connect Repository</h1>
           <Button variant="ghost" onClick={() => setIsConnecting(false)}>Cancel</Button>

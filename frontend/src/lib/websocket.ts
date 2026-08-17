@@ -40,6 +40,7 @@ class WebSocketClient {
   private handlers: Map<string, Set<MessageHandler>> = new Map();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isConnecting = false;
+  private pendingSends: string[] = [];
 
   connect() {
     const token = getAccessToken();
@@ -54,7 +55,7 @@ class WebSocketClient {
     // handshake-URL token would just be dead weight that additionally
     // exposes the access token in places URLs tend to get logged
     // (proxies, server access logs) for no actual benefit.
-    this.ws = new WebSocket(WS_BASE_URL);
+    this.ws = new WebSocket(`${WS_BASE_URL}/ws`);
 
     this.ws.onopen = () => {
       this.isConnecting = false;
@@ -62,6 +63,9 @@ class WebSocketClient {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
       }
+      const queued = this.pendingSends;
+      this.pendingSends = [];
+      queued.forEach((msg) => this.ws?.send(msg));
     };
 
     this.ws.onmessage = (event) => {
@@ -100,8 +104,15 @@ class WebSocketClient {
   }
 
   send(type: string, payload: unknown) {
+    const msg = JSON.stringify({ type, ...(payload as Record<string, unknown>) });
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type, ...(payload as Record<string, unknown>) }));
+      this.ws.send(msg);
+    } else if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      // Handshake still in flight (connect() and subscribeToProgress()/
+      // sendChatMessage() are called back-to-back from the same effect,
+      // before onopen fires) — queue it and flush once the socket opens
+      // instead of silently dropping it.
+      this.pendingSends.push(msg);
     } else {
       console.warn("WebSocket is not connected. Message dropped:", type);
     }

@@ -13,6 +13,7 @@ import {
   Terminal,
   Sparkles
 } from "lucide-react";
+import { VercelNavbar } from "../components/ui/VercelNavbar";
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -118,25 +119,7 @@ export function Landing() {
         />
       </div>
 
-      <header className="relative z-50 flex h-4xl items-center justify-between px-lg lg:px-3xl border-b border-white/[0.08] bg-[#020203]/80 backdrop-blur-md">
-        <div className="flex items-center space-x-sm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[20px] h-[20px] text-white">
-            <path d="M3.5 21 14 3"/>
-            <path d="M20.5 21 10 3"/>
-            <path d="M15.5 21 12 15l-3.5 6"/>
-            <path d="M2 21h20"/>
-          </svg>
-          <span className="font-semibold text-[14px] tracking-tight text-white">CodeTrace</span>
-        </div>
-        <div>
-          <button
-            onClick={handleLogin}
-            className="group relative flex items-center justify-center h-[40px] rounded-[8px] bg-white px-lg text-[14px] font-medium text-[#171717] transition-all hover:scale-[1.02] hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white w-full sm:w-auto overflow-hidden shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] cursor-pointer"
-          >
-            Log In
-          </button>
-        </div>
-      </header>
+      <VercelNavbar />
 
       <main className="relative z-10 flex flex-col items-center pb-5xl">
         

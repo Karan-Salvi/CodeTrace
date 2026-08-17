@@ -1,6 +1,7 @@
 import { prisma } from "../../../database/client.js";
 import { AppError } from "../../../core/errors/app-error.js";
 import { getActiveInstallation } from "./installation.service.js";
+import { enqueueIndexJob } from "../../../queues/producers/index-job.producer.js";
 import type { ConnectRepositoryInput } from "../types/repository.types.js";
 
 export async function connectRepository(userId: string, input: ConnectRepositoryInput) {
@@ -12,7 +13,7 @@ export async function connectRepository(userId: string, input: ConnectRepository
     throw AppError.forbidden("You do not own this installation");
   }
 
-  return prisma.repository.create({
+  const repository = await prisma.repository.create({
     data: {
       userId,
       installationId: input.installationId,
@@ -22,6 +23,17 @@ export async function connectRepository(userId: string, input: ConnectRepository
       defaultBranch: input.defaultBranch,
     },
   });
+
+  // Connecting a repo must kick off its first index — otherwise it sits
+  // at the default PENDING status forever with no job ever enqueued, and
+  // the frontend's Re-index button treats PENDING as "already indexing"
+  // (non-terminal) so it's permanently disabled too.
+  const indexJob = await prisma.indexJob.create({
+    data: { repositoryId: repository.id, type: "FULL", status: "PENDING" },
+  });
+  await enqueueIndexJob({ jobId: indexJob.id, repositoryId: repository.id, type: "FULL" });
+
+  return repository;
 }
 
 export async function listRepositories(userId: string) {

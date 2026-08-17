@@ -40,6 +40,15 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   JINA_API_KEY: z.string().min(1),
   LLM_PROVIDER: z.string().default("gemini"),
+  // Google deprecates dated Gemini model ids on a rolling basis (e.g.
+  // gemini-2.0-flash returned a hard 404 in production) — hardcoding one
+  // means every deprecation is a code deploy. Env-configurable so it's an
+  // ops change instead.
+  // gemini-3.6-flash is real but currently exhibits wild provider-side
+  // latency (0.5s-40s and occasional 503s, verified against this key
+  // directly) — gemini-2.5-flash was consistently sub-second in the same
+  // test. Override via env if that changes.
+  GEMINI_CHAT_MODEL: z.string().default("gemini-2.5-flash"),
   EMBEDDING_PROVIDER: z.string().default("gemini"),
   EMBEDDING_MODEL_VERSION: z.string().min(1),
   INTERNAL_API_SECRET: z.string().min(16),
