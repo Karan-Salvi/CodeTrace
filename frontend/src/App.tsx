@@ -5,9 +5,11 @@ import { Login } from "./pages/Login";
 import { AuthSuccess } from "./pages/AuthSuccess";
 import { Landing } from "./pages/Landing";
 import { Repositories } from "./pages/Repositories";
+import { RepositoryImport } from "./pages/RepositoryImport";
 import { RepositoryLayout } from "./components/layout/RepositoryLayout";
 import { RepositoryOverview } from "./pages/RepositoryOverview";
 import { RepositoryChat } from "./pages/RepositoryChat";
+import { Settings } from "./pages/Settings";
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
           <Route path="/auth/success" element={<AuthSuccess />} />
           <Route element={<AppShell />}>
             <Route path="/repositories" element={<Repositories />} />
+            <Route path="/repositories/new" element={<RepositoryImport />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/repositories/:id" element={<RepositoryLayout />}>
               <Route index element={<RepositoryOverview />} />
               <Route path="chat" element={<RepositoryChat />} />

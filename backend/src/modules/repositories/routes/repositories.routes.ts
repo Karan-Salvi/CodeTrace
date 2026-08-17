@@ -9,12 +9,18 @@ import {
   getInstallationUrl,
   installationCallback,
   getInstallations,
+  getAvailableRepos,
 } from "../controllers/repositories.controller.js";
 import { getInstallationToken } from "../controllers/internal.controller.js";
 
 export const repositoriesRoutes = Router();
 
 repositoriesRoutes.get("/repositories/installations", requireAuth, asyncHandler(getInstallations));
+repositoriesRoutes.get(
+  "/repositories/installations/:id/available-repos",
+  requireAuth,
+  asyncHandler(getAvailableRepos)
+);
 
 repositoriesRoutes.post("/repositories", requireAuth, asyncHandler(postRepository));
 repositoriesRoutes.get("/repositories", requireAuth, asyncHandler(getRepositories));

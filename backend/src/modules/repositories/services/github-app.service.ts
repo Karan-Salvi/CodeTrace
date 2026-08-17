@@ -45,3 +45,49 @@ export async function mintInstallationToken(
   const body = (await res.json()) as { token: string; expires_at: string };
   return { token: body.token, expiresAt: new Date(body.expires_at) };
 }
+
+export interface GithubRepo {
+  owner: string;
+  name: string;
+  githubUrl: string;
+  defaultBranch: string;
+  private: boolean;
+}
+
+export async function listInstallationRepositories(token: string): Promise<GithubRepo[]> {
+  const res = await fetch(`${GITHUB_API_BASE}/installation/repositories`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      `Failed to list GitHub App installation repositories (status ${res.status}): ${
+        (body as { message?: string }).message ?? "unknown error"
+      }`
+    );
+  }
+
+  const body = (await res.json()) as {
+    repositories: Array<{
+      name: string;
+      full_name: string;
+      private: boolean;
+      default_branch: string;
+      owner: { login: string };
+      html_url: string;
+    }>;
+  };
+
+  return body.repositories.map((repo) => ({
+    owner: repo.owner.login,
+    name: repo.name,
+    githubUrl: repo.html_url,
+    defaultBranch: repo.default_branch,
+    private: repo.private,
+  }));
+}

@@ -33,7 +33,7 @@ export function DashboardTopbar() {
           Agent
         </Link>
         <Button asChild variant="secondary" className="h-[32px] px-3 cursor-pointer">
-          <Link to="/repositories?connect=true" className="flex flex-row items-center justify-center gap-1.5 text-[13px] font-medium">
+          <Link to="/repositories/new" className="flex flex-row items-center justify-center gap-1.5 text-[13px] font-medium">
             <span>Add New</span>
             <Plus className="w-3.5 h-3.5 text-mute" />
           </Link>

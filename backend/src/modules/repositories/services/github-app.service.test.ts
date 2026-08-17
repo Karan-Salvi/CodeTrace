@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mintInstallationToken } from "./github-app.service.js";
+import { mintInstallationToken, listInstallationRepositories } from "./github-app.service.js";
 
 vi.mock("jsonwebtoken", () => ({
   default: {
@@ -51,5 +51,61 @@ describe("mintInstallationToken", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     await expect(mintInstallationToken(BigInt(999))).rejects.toThrow(/installation token/i);
+  });
+});
+
+describe("listInstallationRepositories", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it("fetches and maps the installation's repositories", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositories: [
+          {
+            name: "hello-world",
+            full_name: "octocat/hello-world",
+            private: false,
+            default_branch: "main",
+            owner: { login: "octocat" },
+            html_url: "https://github.com/octocat/hello-world",
+          },
+        ],
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await listInstallationRepositories("ghs_faketoken123");
+
+    expect(result).toEqual([
+      {
+        owner: "octocat",
+        name: "hello-world",
+        githubUrl: "https://github.com/octocat/hello-world",
+        defaultBranch: "main",
+        private: false,
+      },
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/installation/repositories");
+    expect(options.headers.Authorization).toBe("Bearer ghs_faketoken123");
+  });
+
+  it("throws a descriptive error when GitHub returns a non-ok response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: "Forbidden" }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(listInstallationRepositories("ghs_bad")).rejects.toThrow(/installation repositories/i);
   });
 });

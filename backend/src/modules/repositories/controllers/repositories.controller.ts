@@ -5,6 +5,7 @@ import {
   connectRepository,
   listRepositories,
   deleteRepository,
+  listAvailableRepos,
 } from "../services/repository.service.js";
 import { getInstallUrl, createInstallation, listInstallations } from "../services/installation.service.js";
 import { verifyAccessToken } from "../../auth/services/session.service.js";
@@ -81,4 +82,9 @@ export async function getInstallations(req: Request, res: Response) {
     githubInstallationId: inst.githubInstallationId.toString(),
   }));
   sendSuccess(res, serialized);
+}
+
+export async function getAvailableRepos(req: Request, res: Response) {
+  const repos = await listAvailableRepos(req.user!.id, req.params.id as string);
+  sendSuccess(res, repos);
 }

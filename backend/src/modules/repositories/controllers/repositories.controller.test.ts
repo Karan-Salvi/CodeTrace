@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import { createApp } from "../../../app.js";
@@ -268,6 +268,109 @@ describe("repositories routes", () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
       expect(res.body.data[0].githubInstallationId).toBe("10");
+    });
+  });
+
+  describe("GET /repositories/installations/:id/available-repos", () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it("requires auth", async () => {
+      const res = await request(app).get("/repositories/installations/some-id/available-repos");
+      expect(res.status).toBe(401);
+    });
+
+    it("rejects an installation owned by another user", async () => {
+      const { token } = await makeAuthedUser();
+      const otherUser = await prisma.user.create({
+        data: { githubId: BigInt(555), username: "other4", githubAccessToken: "enc" },
+      });
+      const installation = await prisma.repositoryInstallation.create({
+        data: { userId: otherUser.id, githubInstallationId: BigInt(20), permissions: {} },
+      });
+
+      const res = await request(app)
+        .get(`/repositories/installations/${installation.id}/available-repos`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("returns the installation's GitHub repos, flagging already-connected ones", async () => {
+      const { user, token } = await makeAuthedUser();
+      const installation = await prisma.repositoryInstallation.create({
+        data: { userId: user.id, githubInstallationId: BigInt(21), permissions: {} },
+      });
+      await prisma.repository.create({
+        data: {
+          userId: user.id,
+          installationId: installation.id,
+          owner: "octocat",
+          name: "hello-world",
+          githubUrl: "https://github.com/octocat/hello-world",
+          defaultBranch: "main",
+        },
+      });
+
+      const fetchMock = vi
+        .fn()
+        // mintInstallationToken
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ token: "ghs_faketoken", expires_at: "2026-08-14T13:00:00Z" }),
+        })
+        // listInstallationRepositories
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            repositories: [
+              {
+                name: "hello-world",
+                full_name: "octocat/hello-world",
+                private: false,
+                default_branch: "main",
+                owner: { login: "octocat" },
+                html_url: "https://github.com/octocat/hello-world",
+              },
+              {
+                name: "not-yet-connected",
+                full_name: "octocat/not-yet-connected",
+                private: true,
+                default_branch: "develop",
+                owner: { login: "octocat" },
+                html_url: "https://github.com/octocat/not-yet-connected",
+              },
+            ],
+          }),
+        });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const res = await request(app)
+        .get(`/repositories/installations/${installation.id}/available-repos`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([
+        {
+          owner: "octocat",
+          name: "hello-world",
+          githubUrl: "https://github.com/octocat/hello-world",
+          defaultBranch: "main",
+          private: false,
+          alreadyConnected: true,
+        },
+        {
+          owner: "octocat",
+          name: "not-yet-connected",
+          githubUrl: "https://github.com/octocat/not-yet-connected",
+          defaultBranch: "develop",
+          private: true,
+          alreadyConnected: false,
+        },
+      ]);
     });
   });
 });
