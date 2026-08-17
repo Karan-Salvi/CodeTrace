@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Triangle, LogOut, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { useAuth } from "../../lib/AuthContext";
 import { Button } from "./button";
 import {
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { Avatar, AvatarFallback } from "./avatar";
+import { BrandLogo } from "./BrandLogo";
 
 export function VercelNavbar() {
   const { token, logout } = useAuth();
@@ -41,7 +42,7 @@ export function VercelNavbar() {
         {/* Brand */}
         <div className="flex h-14 items-center">
           <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-            <Triangle className="w-6 h-6 fill-current text-white" />
+            <BrandLogo className="w-6 h-6 text-white" />
             <span className="font-bold text-lg text-white">CodeTrace</span>
           </Link>
           

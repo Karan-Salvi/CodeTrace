@@ -14,6 +14,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { VercelNavbar } from "../components/ui/VercelNavbar";
+import { BrandLogo } from "../components/ui/BrandLogo";
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -387,7 +388,7 @@ export function Landing() {
           {/* Left Column (Brand + Newsletter) */}
           <div className="lg:col-span-2 flex flex-col">
             <div className="flex items-center space-x-sm mb-lg text-white">
-              <Triangle className="w-[16px] h-[16px] fill-current" />
+              <BrandLogo className="w-[16px] h-[16px] fill-none text-white" />
               <span className="font-mono text-[13px] uppercase tracking-[0.15em] font-semibold">CodeTrace</span>
             </div>
             <p className="text-white/40 text-[14px] leading-relaxed mb-xl max-w-[280px]">

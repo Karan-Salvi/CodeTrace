@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/AuthContext";
 import { cn } from "../../lib/utils";
+import { BrandLogo } from "./BrandLogo";
 
 // --- Inline Icons ---
 
@@ -88,16 +89,7 @@ function MoonIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function LogoIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M3.5 21 14 3"/>
-      <path d="M20.5 21 10 3"/>
-      <path d="M15.5 21 12 15l-3.5 6"/>
-      <path d="M2 21h20"/>
-    </svg>
-  );
-}
+// Removed LogoIcon because we use BrandLogo
 
 // --- Hooks ---
 
@@ -190,7 +182,7 @@ export function Navbar() {
         {/* Left: Brand & Main Nav */}
         <div className="flex items-center space-x-xl">
           <Link to="/" className="flex items-center space-x-2 text-ink hover:opacity-80 transition-opacity">
-            <LogoIcon className="h-6 w-6" />
+            <BrandLogo className="h-6 w-6" />
             <span className="font-semibold text-[16px] tracking-tight">CodeTrace</span>
           </Link>
 
