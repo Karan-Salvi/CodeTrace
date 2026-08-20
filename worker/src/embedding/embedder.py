@@ -1,3 +1,6 @@
+import itertools
+from typing import Iterator
+
 from google import genai
 from google.genai import types
 
@@ -5,10 +8,24 @@ from src.config import get_settings
 
 _EMBED_DIMENSIONALITY = 1536
 
+_key_cycle: Iterator[str] | None = None
+_key_cycle_pool: list[str] | None = None
+
+
+def _next_key() -> str:
+    global _key_cycle, _key_cycle_pool
+    pool = get_settings().gemini_api_key_pool
+    # Rebuild the cycle if the configured pool changed (covers
+    # get_settings() cache being cleared, e.g. in tests) rather than
+    # cycling a stale key list forever.
+    if _key_cycle is None or _key_cycle_pool != pool:
+        _key_cycle_pool = pool
+        _key_cycle = itertools.cycle(pool)
+    return next(_key_cycle)
+
 
 def _client() -> genai.Client:
-    settings = get_settings()
-    return genai.Client(api_key=settings.gemini_api_key)
+    return genai.Client(api_key=_next_key())
 
 
 async def embed_text(text: str) -> list[float]:

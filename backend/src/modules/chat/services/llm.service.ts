@@ -1,7 +1,22 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../../../config/env.js";
 
-const client = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+// Round-robin across all configured keys so embedding/chat calls spread
+// over several independent per-minute quotas instead of hammering one
+// (mirrors worker/src/embedding/embedder.py's key pool).
+const keyPool = [
+  env.GEMINI_API_KEY,
+  ...env.GEMINI_API_KEYS_EXTRA.split(",").map((k) => k.trim()).filter(Boolean),
+];
+const uniqueKeyPool = [...new Set(keyPool)];
+const clients = uniqueKeyPool.map((key) => new GoogleGenerativeAI(key));
+let nextClientIndex = 0;
+
+function getClient(): GoogleGenerativeAI {
+  const client = clients[nextClientIndex];
+  nextClientIndex = (nextClientIndex + 1) % clients.length;
+  return client;
+}
 
 interface RetryOptions {
   maxAttempts: number;
@@ -47,7 +62,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
 export async function embedQuery(text: string): Promise<number[]> {
   return withRetry(
     async () => {
-      const model = client.getGenerativeModel({ model: "gemini-embedding-001" });
+      const model = getClient().getGenerativeModel({ model: "gemini-embedding-001" });
       const result = await model.embedContent({
         content: { role: "user", parts: [{ text }] },
         outputDimensionality: 1536,
@@ -63,7 +78,7 @@ export async function generateChatCompletion(systemPrompt: string, userPrompt: s
   try {
     return await withRetry(
       async () => {
-        const model = client.getGenerativeModel({
+        const model = getClient().getGenerativeModel({
           model: env.GEMINI_CHAT_MODEL,
           systemInstruction: systemPrompt,
         });

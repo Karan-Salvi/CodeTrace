@@ -21,6 +21,36 @@ def test_settings_load_from_env(monkeypatch: MonkeyPatch) -> None:
     assert settings.embedding_model_version == "gemini-embedding-001-1536"
     assert settings.max_file_size_bytes == 1048576
 
+def test_gemini_api_key_pool_dedupes_and_preserves_order(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5433/db")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6380")
+    monkeypatch.setenv("BACKEND_INTERNAL_URL", "http://localhost:3000")
+    monkeypatch.setenv("INTERNAL_API_SECRET", "test-secret")
+    monkeypatch.setenv("GEMINI_API_KEY", "key-a")
+    monkeypatch.setenv("GEMINI_API_KEYS_EXTRA", " key-b,key-a, key-c ,")
+    monkeypatch.setenv("EMBEDDING_MODEL_VERSION", "gemini-embedding-001-1536")
+
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    assert settings.gemini_api_key_pool == ["key-a", "key-b", "key-c"]
+
+
+def test_gemini_api_key_pool_defaults_to_single_key(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5433/db")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6380")
+    monkeypatch.setenv("BACKEND_INTERNAL_URL", "http://localhost:3000")
+    monkeypatch.setenv("INTERNAL_API_SECRET", "test-secret")
+    monkeypatch.setenv("GEMINI_API_KEY", "only-key")
+    monkeypatch.delenv("GEMINI_API_KEYS_EXTRA", raising=False)
+    monkeypatch.setenv("EMBEDDING_MODEL_VERSION", "gemini-embedding-001-1536")
+
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    assert settings.gemini_api_key_pool == ["only-key"]
+
+
 def test_settings_raises_on_missing_required_var(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr("src.config.Settings.model_config", {"env_file": None, "extra": "ignore"})

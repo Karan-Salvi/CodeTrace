@@ -38,6 +38,10 @@ const envSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string().min(1),
 
   GEMINI_API_KEY: z.string().min(1),
+  // Optional comma-separated additional keys — round-robining across
+  // several free-tier keys spreads embedding/chat calls over several
+  // independent per-minute quotas instead of hammering one.
+  GEMINI_API_KEYS_EXTRA: z.string().default(""),
   JINA_API_KEY: z.string().min(1),
   LLM_PROVIDER: z.string().default("gemini"),
   // Google deprecates dated Gemini model ids on a rolling basis (e.g.

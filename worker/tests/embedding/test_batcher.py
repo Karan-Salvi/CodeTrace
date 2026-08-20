@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from google.genai import errors as genai_errors
 from sqlalchemy import text
 
 from src.db import get_engine
@@ -73,6 +74,85 @@ async def test_raises_on_provider_returning_fewer_vectors_than_requested() -> No
         await embed_and_store_batch(
             engine, [(hash_a, "content a"), (hash_b, "content b")], model_version
         )
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_splits_into_sub_batches_for_gemini_request_cap() -> None:
+    # Gemini's batchEmbedContents caps a request at 100 items, and the
+    # free-tier per-minute quota makes even a 100-item call of real code
+    # risky — a repo with more uncached chunks than one sub-batch must
+    # not be sent as one call.
+    get_engine.cache_clear()
+    engine = get_engine()
+    model_version = f"test-model-{uuid.uuid4()}"
+    chunks = [(f"hash-{i}", f"content {i}") for i in range(45)]
+
+    async def fake_embed_batch(texts: list[str]) -> list[list[float]]:
+        return [[0.1] * 1536 for _ in texts]
+
+    with patch(
+        "src.embedding.batcher.embed_batch", new_callable=AsyncMock, side_effect=fake_embed_batch
+    ) as mock_embed:
+        result = await embed_and_store_batch(engine, chunks, model_version)
+
+    assert mock_embed.await_count == 3
+    assert [len(call.args[0]) for call in mock_embed.await_args_list] == [20, 20, 5]
+    assert len(result) == 45
+
+
+@pytest.mark.asyncio
+async def test_retries_sub_batch_on_429_then_succeeds() -> None:
+    get_engine.cache_clear()
+    engine = get_engine()
+    model_version = f"test-model-{uuid.uuid4()}"
+    chunks = [(f"hash-{i}", f"content {i}") for i in range(3)]
+
+    rate_limit_error = genai_errors.APIError(
+        429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "quota"}}
+    )
+    calls = {"n": 0}
+
+    async def flaky_embed_batch(texts: list[str]) -> list[list[float]]:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise rate_limit_error
+        return [[0.1] * 1536 for _ in texts]
+
+    with (
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "src.embedding.batcher.embed_batch", new_callable=AsyncMock, side_effect=flaky_embed_batch
+        ) as mock_embed,
+    ):
+        result = await embed_and_store_batch(engine, chunks, model_version)
+
+    assert mock_embed.await_count == 2
+    assert len(result) == 3
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_raises_immediately_on_non_429_api_error() -> None:
+    get_engine.cache_clear()
+    engine = get_engine()
+    model_version = f"test-model-{uuid.uuid4()}"
+    chunks = [(f"hash-{i}", f"content {i}") for i in range(3)]
+
+    server_error = genai_errors.APIError(
+        500, {"error": {"code": 500, "status": "INTERNAL", "message": "boom"}}
+    )
+
+    with (
+        patch(
+            "src.embedding.batcher.embed_batch", new_callable=AsyncMock, side_effect=server_error
+        ) as mock_embed,
+        pytest.raises(genai_errors.APIError),
+    ):
+        await embed_and_store_batch(engine, chunks, model_version)
+
+    assert mock_embed.await_count == 1
+    await engine.dispose()
     await engine.dispose()
 
 
