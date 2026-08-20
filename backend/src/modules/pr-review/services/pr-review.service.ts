@@ -174,42 +174,77 @@ export async function processPrReviewJob(payload: PrReviewJobPayload): Promise<v
         pullRequestId_commitSha: { pullRequestId: payload.pullRequestId, commitSha: payload.commitSha },
       },
     });
-    if (existing?.status === "COMPLETE") {
+    if (existing?.status === "COMPLETE" || existing === null) {
       return;
     }
-    // A RUNNING row: either a concurrent attempt is genuinely still
-    // in-flight, or it's a leftover from a prior attempt that crashed
-    // before reaching COMPLETE. Can't safely distinguish the two without
-    // more machinery (a heartbeat/staleness timestamp) — skip rather
-    // than risk a duplicate paid LLM call or a duplicate GitHub post.
-    // Known gap: a genuinely crashed RUNNING row (its own BullMQ retries
-    // all exhausted) stays RUNNING forever with no automatic recovery.
-    return;
+    // A RUNNING or FAILED row: BullMQ locks a jobId while it's processing
+    // — no two executions of the SAME jobId ever run concurrently — so
+    // the common case landing here is a legitimate retry of this exact
+    // job after a prior attempt threw (a real Gemini 503, a network
+    // blip). That retry must be allowed to actually redo the work, not
+    // silently no-op: returning here without throwing used to make
+    // BullMQ mark the job "completed" (the handler resolved normally)
+    // while this row stayed RUNNING forever with zero further retries
+    // and zero visibility — confirmed live, not hypothetical. Take the
+    // row over and retry for real. The narrow remaining risk (a second,
+    // genuinely different jobId for the same commit — e.g. a duplicate
+    // webhook delivery — arriving while this row is truly still
+    // in-flight) can race to a duplicate GitHub post; accepted as the
+    // lesser risk against every retry being silently dead.
+    review = await prisma.prReview.update({
+      where: { id: existing.id },
+      data: { status: "RUNNING", failureReason: null, writebackFailedAt: null },
+    });
   }
 
-  const pullRequest = await prisma.pullRequest.findUniqueOrThrow({
-    where: { id: payload.pullRequestId },
-    include: { repository: { include: { installation: true } } },
-  });
+  try {
+    const pullRequest = await prisma.pullRequest.findUniqueOrThrow({
+      where: { id: payload.pullRequestId },
+      include: { repository: { include: { installation: true } } },
+    });
 
-  const { token } = await mintInstallationToken(
-    pullRequest.repository.installation.githubInstallationId
-  );
+    const { token } = await mintInstallationToken(
+      pullRequest.repository.installation.githubInstallationId
+    );
 
-  const diffResult = await getPrDiff(
-    token,
-    pullRequest.repository.owner,
-    pullRequest.repository.name,
-    pullRequest.baseSha,
-    payload.commitSha
-  );
+    const diffResult = await getPrDiff(
+      token,
+      pullRequest.repository.owner,
+      pullRequest.repository.name,
+      pullRequest.baseSha,
+      payload.commitSha
+    );
 
-  const completedReview = await runPrReview(
-    pullRequest.id,
-    diffResult.changedRanges,
-    payload.commitSha,
-    review.id
-  );
+    const completedReview = await runPrReview(
+      pullRequest.id,
+      diffResult.changedRanges,
+      payload.commitSha,
+      review.id
+    );
+
+    await postWritebackAndRecordFailure(completedReview, pullRequest, token, diffResult);
+  } catch (err) {
+    // The pipeline itself failed (diff fetch, retrieval, the LLM call —
+    // anything before write-back). Record it so the row doesn't sit at
+    // RUNNING forever with no explanation, then rethrow so BullMQ's own
+    // attempts/backoff still applies — a real retry now correctly takes
+    // this row over via the branch above instead of a silent no-op.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`PR review pipeline failed for review ${review.id}:`, err);
+    await prisma.prReview.update({
+      where: { id: review.id },
+      data: { status: "FAILED", failureReason: message },
+    });
+    throw err;
+  }
+}
+
+async function postWritebackAndRecordFailure(
+  completedReview: Awaited<ReturnType<typeof runPrReview>>,
+  pullRequest: { githubPrNumber: number; repository: { owner: string; name: string } },
+  token: string,
+  diffResult: Awaited<ReturnType<typeof getPrDiff>>
+): Promise<void> {
 
   // Wrapped explicitly: if postReviewToGitHub's fetch itself throws
   // (network error, not just a non-2xx response), that must not escape
@@ -238,9 +273,9 @@ export async function processPrReviewJob(payload: PrReviewJobPayload): Promise<v
   }
 
   if (!writebackResult.posted) {
-    console.error(`PR Review Writeback failed for PR ${pullRequest.id}:`, writebackResult.error);
+    console.error(`PR Review Writeback failed for PR #${pullRequest.githubPrNumber}:`, writebackResult.error);
     await prisma.prReview.update({
-      where: { id: review.id },
+      where: { id: completedReview.id },
       data: { writebackFailedAt: new Date() },
     });
   }

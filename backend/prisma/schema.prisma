@@ -362,6 +362,11 @@ model PrReview {
   durationMs      Int?           @map("duration_ms")
   llmCostUsd      Decimal?       @map("llm_cost_usd") @db.Decimal(10, 4)
   writebackFailedAt DateTime?    @map("writeback_failed_at")
+  // Set when the review pipeline itself throws (diff fetch, retrieval, the
+  // LLM call) — status flips to FAILED with the real reason stored here,
+  // instead of the row being silently abandoned at RUNNING forever with
+  // no visibility into what actually happened.
+  failureReason   String?        @map("failure_reason")
   createdAt       DateTime       @default(now()) @map("created_at")
 
   pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)

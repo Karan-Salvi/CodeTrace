@@ -286,16 +286,31 @@ describe("processPrReviewJob", () => {
     expect(allReviews[0]?.id).toBe(completed.id);
   });
 
-  it("skips rather than duplicates when the pullRequestId+commitSha unique constraint rejects a concurrent create (two jobs racing the same commit)", async () => {
-    // Simulates the real race the DB unique constraint exists to close:
-    // a second job for this exact commit (duplicate webhook delivery, or
-    // a genuinely concurrent worker slot under concurrency:5) finds a
-    // RUNNING row already owned by another in-flight attempt.
-    const inFlight = await prisma.prReview.create({
+  it("takes over and actually retries a leftover RUNNING row from a prior attempt, instead of silently no-op'ing (BullMQ would read that no-op as job success and never retry again)", async () => {
+    // A RUNNING row already exists — e.g. left behind by an earlier
+    // attempt of this exact BullMQ job that threw partway through.
+    // BullMQ locks a jobId while processing it, so no two executions of
+    // the SAME job ever run concurrently — the row here must be this
+    // job's own leftover, and the retry must be allowed to redo the
+    // work for real, not just return successfully having done nothing.
+    const leftover = await prisma.prReview.create({
       data: { pullRequestId, commitSha: "head456", status: "RUNNING" },
     });
-    const generateChatCompletionSpy = vi.spyOn(llmService, "generateChatCompletion");
+
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "fake-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubDiffService, "getPrDiff").mockResolvedValue({
+      changedRanges: [{ filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 }],
+      positionByFileAndLine: new Map(),
+    });
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    const generateChatCompletionSpy = vi
+      .spyOn(llmService, "generateChatCompletion")
+      .mockResolvedValue(JSON.stringify([]));
     generateChatCompletionSpy.mockClear();
+    vi.spyOn(githubWritebackService, "postReviewToGitHub").mockResolvedValue({ posted: true });
 
     await processPrReviewJob({
       jobId: "job-4",
@@ -304,10 +319,58 @@ describe("processPrReviewJob", () => {
       commitSha: "head456",
     });
 
-    expect(generateChatCompletionSpy).not.toHaveBeenCalled();
+    expect(generateChatCompletionSpy).toHaveBeenCalledTimes(1);
     const allReviews = await prisma.prReview.findMany({ where: { pullRequestId } });
     expect(allReviews).toHaveLength(1);
-    expect(allReviews[0]?.id).toBe(inFlight.id);
-    expect(allReviews[0]?.status).toBe("RUNNING");
+    expect(allReviews[0]?.id).toBe(leftover.id);
+    expect(allReviews[0]?.status).toBe("COMPLETE");
+  });
+
+  it("marks the review FAILED with the real error and rethrows when the pipeline itself throws (not just write-back), instead of leaving the row stuck at RUNNING forever", async () => {
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "fake-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubDiffService, "getPrDiff").mockResolvedValue({
+      changedRanges: [{ filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 }],
+      positionByFileAndLine: new Map(),
+    });
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    vi.spyOn(llmService, "generateChatCompletion").mockRejectedValue(
+      new Error("The AI service is temporarily unavailable. Please try again in a moment.")
+    );
+
+    await expect(
+      processPrReviewJob({ jobId: "job-5", pullRequestId, repositoryId, commitSha: "head456" })
+    ).rejects.toThrow("temporarily unavailable");
+
+    const savedReview = await prisma.prReview.findFirst({ where: { pullRequestId } });
+    expect(savedReview?.status).toBe("FAILED");
+    expect(savedReview?.failureReason).toContain("temporarily unavailable");
+  });
+
+  it("recovers on a real BullMQ retry after a FAILED attempt, ending COMPLETE instead of stuck FAILED forever", async () => {
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "fake-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubDiffService, "getPrDiff").mockResolvedValue({
+      changedRanges: [{ filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 }],
+      positionByFileAndLine: new Map(),
+    });
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    vi.spyOn(githubWritebackService, "postReviewToGitHub").mockResolvedValue({ posted: true });
+
+    const generateChatCompletionSpy = vi.spyOn(llmService, "generateChatCompletion");
+    generateChatCompletionSpy.mockRejectedValueOnce(new Error("503 UNAVAILABLE"));
+    generateChatCompletionSpy.mockResolvedValueOnce(JSON.stringify([]));
+
+    const payload = { jobId: "job-6", pullRequestId, repositoryId, commitSha: "head456" };
+    await expect(processPrReviewJob(payload)).rejects.toThrow("503 UNAVAILABLE");
+    await processPrReviewJob(payload); // BullMQ's own retry, same jobId
+
+    const allReviews = await prisma.prReview.findMany({ where: { pullRequestId } });
+    expect(allReviews).toHaveLength(1);
+    expect(allReviews[0]?.status).toBe("COMPLETE");
   });
 });
