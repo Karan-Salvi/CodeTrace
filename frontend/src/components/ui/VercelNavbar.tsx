@@ -34,8 +34,8 @@ export function VercelNavbar() {
 
   return (
     <div
-      className={`flex sticky px-4 z-50 top-0 w-full bg-canvas items-center h-16 justify-between transition-border duration-300 ${
-        scrolled ? "border-b border-white/10 shadow-md" : "border-b-0"
+      className={`flex sticky px-4 z-50 top-0 w-full items-center h-16 justify-between transition-all duration-300 ${
+        scrolled ? "bg-canvas/70 backdrop-blur-md border-b border-white/10 shadow-md" : "bg-transparent border-b-0"
       }`}
     >
       <div className="flex items-center justify-between w-full mx-auto max-w-7xl">
@@ -48,8 +48,15 @@ export function VercelNavbar() {
           
           {/* Main Links */}
           <nav className="ml-8 hidden md:flex items-center space-x-6 text-sm font-medium text-muted-foreground">
-            <Link to="/docs" className="hover:text-white transition-colors cursor-pointer">Docs</Link>
-            {token && (
+            {!token ? (
+              <>
+                <a href="#features" className="hover:text-white transition-colors cursor-pointer">Features</a>
+                <a href="#pipeline" className="hover:text-white transition-colors cursor-pointer">Solution</a>
+                <a href="#about" className="hover:text-white transition-colors cursor-pointer">About</a>
+                <a href="#pricing" className="hover:text-white transition-colors cursor-pointer">Pricing</a>
+                <a href="#faq" className="hover:text-white transition-colors cursor-pointer">Community</a>
+              </>
+            ) : (
               <Link to="/repositories" className="hover:text-white transition-colors cursor-pointer">Dashboard</Link>
             )}
           </nav>
@@ -58,9 +65,17 @@ export function VercelNavbar() {
         {/* Right Auth Section */}
         <div className="flex gap-4 items-center">
           {!token ? (
-            <Button onClick={() => navigate("/login")} variant="secondary" className="rounded-full px-6 text-sm h-8">
-              Log In
-            </Button>
+            <>
+              <a
+                href="#faq"
+                className="hidden sm:flex items-center h-8 px-4 rounded-full border border-white/15 text-sm font-medium text-white/80 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
+              >
+                Contact
+              </a>
+              <Button onClick={() => navigate("/login")} className="rounded-full px-6 text-sm h-8">
+                Get Started
+              </Button>
+            </>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
