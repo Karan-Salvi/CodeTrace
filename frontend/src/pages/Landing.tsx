@@ -885,12 +885,14 @@ export function Landing() {
           stacked blue blocks. */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          {/* Layer 1: large central glow, brightest point */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1600px] h-[900px] rounded-full bg-[#0864e0] blur-[180px] opacity-40 mix-blend-screen" />
+          {/* Layer 1: large central glow, brightest point — matched to the
+              Pricing section's glow intensity (opacity-15) so the footer
+              doesn't read darker/bluer than the rest of the page */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1600px] h-[900px] rounded-full bg-[#0864e0] blur-[180px] opacity-15 mix-blend-screen" />
           {/* Layer 2: weaker glow, slightly lower, widens the spread */}
-          <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[1200px] h-[700px] rounded-full bg-[#1c5fc4] blur-[160px] opacity-25 mix-blend-screen" />
+          <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[1200px] h-[700px] rounded-full bg-[#1c5fc4] blur-[160px] opacity-10 mix-blend-screen" />
           {/* Layer 3: subtle top-center highlight */}
-          <div className="absolute -top-[5%] left-1/2 -translate-x-1/2 w-[700px] h-[300px] rounded-full bg-[#4a8fef] blur-[130px] opacity-20 mix-blend-screen" />
+          <div className="absolute -top-[5%] left-1/2 -translate-x-1/2 w-[700px] h-[300px] rounded-full bg-[#4a8fef] blur-[130px] opacity-10 mix-blend-screen" />
           {/* Vignette: pulls the far edges back to near-black so the glow reads as centered light, not a block */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,transparent_0%,transparent_35%,#020203_85%)]" />
         </div>
