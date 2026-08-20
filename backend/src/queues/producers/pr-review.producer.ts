@@ -8,5 +8,12 @@ const prReviewQueue = new Queue<PrReviewJobPayload>(PR_REVIEW_QUEUE, {
 });
 
 export async function enqueuePrReviewJob(payload: PrReviewJobPayload): Promise<void> {
-  await prReviewQueue.add(PR_REVIEW_QUEUE, payload, { jobId: payload.jobId });
+  // Matches index-job.producer.ts's retry shape — a transient GitHub API
+  // or LLM failure inside the pr-review consumer must not permanently
+  // fail the job on the first attempt.
+  await prReviewQueue.add(PR_REVIEW_QUEUE, payload, {
+    jobId: payload.jobId,
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+  });
 }

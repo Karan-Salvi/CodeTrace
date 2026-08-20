@@ -373,4 +373,86 @@ describe("repositories routes", () => {
       ]);
     });
   });
+
+  describe("GET /:id/pull-requests", () => {
+    it("returns 200 with PRs and their latest review status, sorted by creation date descending", async () => {
+      const { user, token } = await makeAuthedUser();
+      const installation = await prisma.repositoryInstallation.create({
+        data: { userId: user.id, githubInstallationId: BigInt(1), permissions: {} },
+      });
+      const repo = await prisma.repository.create({
+        data: {
+          userId: user.id,
+          installationId: installation.id,
+          owner: "octocat",
+          name: "repo1",
+          githubUrl: "url",
+          defaultBranch: "main",
+        },
+      });
+
+      const pr1 = await prisma.pullRequest.create({
+        data: {
+          repositoryId: repo.id,
+          githubPrNumber: 1,
+          title: "PR 1",
+          author: "octocat",
+          baseSha: "base1",
+          headSha: "head1",
+          createdAt: new Date("2024-01-01T00:00:00Z"),
+        },
+      });
+
+      const pr2 = await prisma.pullRequest.create({
+        data: {
+          repositoryId: repo.id,
+          githubPrNumber: 2,
+          title: "PR 2",
+          author: "octocat",
+          baseSha: "base2",
+          headSha: "head2",
+          createdAt: new Date("2024-01-02T00:00:00Z"),
+        },
+      });
+
+      // pr2 has a COMPLETE review
+      await prisma.prReview.create({
+        data: {
+          pullRequestId: pr2.id,
+          commitSha: "head2",
+          status: "COMPLETE",
+          riskScore: 20,
+          riskLevel: "LOW",
+        },
+      });
+
+      // pr1 has two reviews from two separate pushes (distinct commits —
+      // pr_reviews has a real DB unique constraint on
+      // (pullRequestId, commitSha), so two reviews for the identical
+      // commit isn't a valid fixture), one PENDING and one COMPLETE; we
+      // should get the latest (by createdAt). Prisma defaults to now(),
+      // so creating them sequentially works.
+      await prisma.prReview.create({
+        data: { pullRequestId: pr1.id, commitSha: "head1-earlier-push", status: "COMPLETE" },
+      });
+      const latestReview = await prisma.prReview.create({
+        data: { pullRequestId: pr1.id, commitSha: "head1", status: "PENDING" },
+      });
+
+      const res = await request(app)
+        .get(`/repositories/${repo.id}/pull-requests`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.pullRequests).toHaveLength(2);
+      
+      // Sorted by createdAt desc, so PR 2 is first
+      expect(res.body.data.pullRequests[0].id).toBe(pr2.id);
+      expect(res.body.data.pullRequests[0].latestReview.status).toBe("COMPLETE");
+      
+      expect(res.body.data.pullRequests[1].id).toBe(pr1.id);
+      expect(res.body.data.pullRequests[1].latestReview.id).toBe(latestReview.id);
+      expect(res.body.data.pullRequests[1].latestReview.status).toBe("PENDING");
+    });
+  });
 });

@@ -24,15 +24,22 @@ interface RetryOptions {
   maxDelayMs?: number;
 }
 
+const RETRYABLE_STATUSES = new Set([429, 500, 503, 504]);
+
 // The Gemini SDK throws GoogleGenerativeAIFetchError with a numeric
 // `.status` for HTTP-level failures. 429/500/503/504 are transient
-// (rate limit / provider-side overload) and worth retrying; anything
-// else (400 bad request, 401/403 auth, 404 unknown model) will fail
-// identically every time, so retrying it just adds latency before the
-// same error.
+// (rate limit / provider-side overload) and worth retrying; any other
+// known status (400 bad request, 401/403 auth, 404 unknown model) will
+// fail identically every time, so retrying it just adds latency before
+// the same error. A plain network-level error (DNS failure, ECONNRESET,
+// a fetch abort) has no `.status` at all — that used to fall into the
+// same "don't retry" bucket as a real 400, even though it's exactly the
+// kind of transient failure retry logic exists for. Treated as retryable
+// here instead.
 function isRetryableStatus(err: unknown): boolean {
   const status = (err as { status?: number } | null)?.status;
-  return status === 429 || status === 500 || status === 503 || status === 504;
+  if (status === undefined) return true;
+  return RETRYABLE_STATUSES.has(status);
 }
 
 // architecture.md: on LLM/embedding failure, retry with backoff up to a
@@ -60,18 +67,27 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
 }
 
 export async function embedQuery(text: string): Promise<number[]> {
-  return withRetry(
-    async () => {
-      const model = getClient().getGenerativeModel({ model: "gemini-embedding-001" });
-      const result = await model.embedContent({
-        content: { role: "user", parts: [{ text }] },
-        outputDimensionality: 1536,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-      return result.embedding.values;
-    },
-    { maxAttempts: 3, baseDelayMs: 500 }
-  );
+  try {
+    return await withRetry(
+      async () => {
+        const model = getClient().getGenerativeModel({ model: "gemini-embedding-001" });
+        const result = await model.embedContent({
+          content: { role: "user", parts: [{ text }] },
+          outputDimensionality: 1536,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+        return result.embedding.values;
+      },
+      { maxAttempts: 3, baseDelayMs: 500 }
+    );
+  } catch (err) {
+    // Same reasoning as generateChatCompletion: chat.service.ts and
+    // pr-review.service.ts both call embedQuery directly on paths that
+    // reach the client (WebSocket chat, PR-review write-back) — the raw
+    // Google SDK error must not leak through either one.
+    console.error("embedQuery failed after retries:", err);
+    throw new Error("The AI service is temporarily unavailable. Please try again in a moment.");
+  }
 }
 
 export async function generateChatCompletion(systemPrompt: string, userPrompt: string): Promise<string> {

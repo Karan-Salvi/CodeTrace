@@ -351,20 +351,28 @@ enum RiskLevel {
 }
 
 model PrReview {
-  id            String         @id @default(uuid())
-  pullRequestId String         @map("pull_request_id")
-  commitSha     String         @map("commit_sha")
-  status        PrReviewStatus @default(PENDING)
-  riskScore     Int?           @map("risk_score")
-  riskLevel     RiskLevel?     @map("risk_level")
-  riskFactors   Json?          @map("risk_factors") // which factors triggered + points — never a bare score
-  findings      Json? // [{category, file, line, explanation, related_symbol, citation}]
-  durationMs    Int?           @map("duration_ms")
-  llmCostUsd    Decimal?       @map("llm_cost_usd") @db.Decimal(10, 4)
-  createdAt     DateTime       @default(now()) @map("created_at")
+  id              String         @id @default(uuid())
+  pullRequestId   String         @map("pull_request_id")
+  commitSha       String         @map("commit_sha")
+  status          PrReviewStatus @default(PENDING)
+  riskScore       Int?           @map("risk_score")
+  riskLevel       RiskLevel?     @map("risk_level")
+  riskFactors     Json?          @map("risk_factors") // which factors triggered + points — never a bare score
+  findings        Json? // [{category, file, line, explanation, related_symbol, citation}]
+  durationMs      Int?           @map("duration_ms")
+  llmCostUsd      Decimal?       @map("llm_cost_usd") @db.Decimal(10, 4)
+  writebackFailedAt DateTime?    @map("writeback_failed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
 
   pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
 
+  // The actual idempotency mechanism for processPrReviewJob (pr-review.service.ts),
+  // same pattern as webhook_events(event_id) — a DB-level unique constraint,
+  // not an application-level find-then-act check, is what makes two
+  // concurrent attempts at the same commit resolve to one row instead of
+  // racing (BullMQ worker concurrency > 1, or a duplicate webhook delivery
+  // enqueuing a second job with a fresh jobId for the same commit).
+  @@unique([pullRequestId, commitSha])
   @@index([pullRequestId])
   @@map("pr_reviews")
 }

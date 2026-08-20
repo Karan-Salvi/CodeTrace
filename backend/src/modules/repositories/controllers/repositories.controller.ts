@@ -12,6 +12,7 @@ import { verifyAccessToken } from "../../auth/services/session.service.js";
 import { AppError } from "../../../core/errors/app-error.js";
 import { sendSuccess } from "../../../core/utils/response.js";
 import { env } from "../../../config/env.js";
+import { prisma } from "../../../database/client.js";
 
 export async function postRepository(req: Request, res: Response) {
   const parsed = connectRepositorySchema.safeParse(req.body);
@@ -87,4 +88,45 @@ export async function getInstallations(req: Request, res: Response) {
 export async function getAvailableRepos(req: Request, res: Response) {
   const repos = await listAvailableRepos(req.user!.id, req.params.id as string);
   sendSuccess(res, repos);
+}
+
+export async function getPullRequests(req: Request, res: Response) {
+  // Validate ownership
+  await prisma.repository.findFirstOrThrow({
+    where: { id: req.params.id as string, userId: req.user!.id },
+  });
+
+  const prs = await prisma.pullRequest.findMany({
+    where: { repositoryId: req.params.id as string },
+    orderBy: { createdAt: "desc" },
+    include: {
+      reviews: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          riskScore: true,
+          riskLevel: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  const mapped = prs.map((pr) => {
+    const latestReview = pr.reviews[0] ?? null;
+    return {
+      id: pr.id,
+      githubPrNumber: pr.githubPrNumber,
+      title: pr.title,
+      author: pr.author,
+      baseSha: pr.baseSha,
+      headSha: pr.headSha,
+      createdAt: pr.createdAt,
+      latestReview,
+    };
+  });
+
+  sendSuccess(res, { pullRequests: mapped });
 }

@@ -21,6 +21,7 @@ while ($true) {
 Write-Host "Starting backend, worker, frontend in separate windows..."
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend'; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend'; npm run worker:pr-review"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\worker'; .\.venv\Scripts\python.exe -m src.main"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\frontend'; npm run dev"
 

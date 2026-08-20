@@ -9,6 +9,8 @@ import { RepositoryImport } from "./pages/RepositoryImport";
 import { RepositoryLayout } from "./components/layout/RepositoryLayout";
 import { RepositoryOverview } from "./pages/RepositoryOverview";
 import { RepositoryChat } from "./pages/RepositoryChat";
+import { PullRequests } from "./pages/PullRequests";
+import { PullRequestReview } from "./pages/PullRequestReview";
 import { Settings } from "./pages/Settings";
 
 function App() {
@@ -26,6 +28,8 @@ function App() {
             <Route path="/repositories/:id" element={<RepositoryLayout />}>
               <Route index element={<RepositoryOverview />} />
               <Route path="chat" element={<RepositoryChat />} />
+              <Route path="pull-requests" element={<PullRequests />} />
+              <Route path="pull-requests/:prId" element={<PullRequestReview />} />
             </Route>
           </Route>
         </Routes>

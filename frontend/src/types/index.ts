@@ -73,3 +73,51 @@ export interface Message {
   citations: Citation[];
   createdAt: string;
 }
+
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+export type PrReviewStatus = "PENDING" | "RUNNING" | "COMPLETE" | "FAILED";
+
+export interface PrFindingCitation {
+  file: string;
+  startLine: number;
+  endLine: number;
+  chunkId: string;
+}
+
+export interface PrFinding {
+  category: "BUG" | "SECURITY" | "PERFORMANCE" | "LOGIC" | "TESTING" | "MAINTAINABILITY";
+  file: string;
+  line: number;
+  explanation: string;
+  relatedSymbol: string | null;
+  citation: PrFindingCitation | null;
+}
+
+export interface PrRiskFactor {
+  code: string;
+  points: number;
+  reason: string;
+}
+
+export interface PrReview {
+  id: string;
+  pullRequestId: string;
+  commitSha: string;
+  status: PrReviewStatus;
+  riskScore: number | null;
+  riskLevel: RiskLevel | null;
+  riskFactors: PrRiskFactor[] | null;
+  findings: PrFinding[] | null;
+  createdAt: string;
+}
+
+export interface PullRequest {
+  id: string;
+  githubPrNumber: number;
+  title: string;
+  author: string;
+  baseSha: string;
+  headSha: string;
+  createdAt: string;
+  latestReview: PrReview | null;
+}

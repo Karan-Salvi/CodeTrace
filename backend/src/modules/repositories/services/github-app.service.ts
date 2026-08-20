@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../../../config/env.js";
 
-const GITHUB_API_BASE = "https://api.github.com";
+export const GITHUB_API_BASE = "https://api.github.com";
 
 function signAppJwt(): string {
   const now = Math.floor(Date.now() / 1000);

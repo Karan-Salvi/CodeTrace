@@ -1,12 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { embedQuery, generateChatCompletion, withRetry } from "./llm.service.js";
 
+function retryableError(status: number): Error {
+  return Object.assign(new Error("transient failure"), { status });
+}
+
 describe("withRetry", () => {
-  it("retries a failing function up to the cap then throws", async () => {
+  it("retries a failing function with a retryable status up to the cap then throws", async () => {
     let attempts = 0;
     const fn = vi.fn(async () => {
       attempts++;
-      throw new Error("transient failure");
+      throw retryableError(503);
     });
 
     await expect(withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })).rejects.toThrow("transient failure");
@@ -17,13 +21,35 @@ describe("withRetry", () => {
     let attempts = 0;
     const fn = vi.fn(async () => {
       attempts++;
-      if (attempts < 2) throw new Error("transient failure");
+      if (attempts < 2) throw retryableError(429);
       return "ok";
     });
 
     const result = await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
+  });
+
+  it("stops immediately for a non-retryable status instead of burning the remaining attempts", async () => {
+    let attempts = 0;
+    const fn = vi.fn(async () => {
+      attempts++;
+      throw retryableError(400);
+    });
+
+    await expect(withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })).rejects.toThrow("transient failure");
+    expect(attempts).toBe(1);
+  });
+
+  it("retries an error with no status at all, since that's a network-level failure (DNS/ECONNRESET/fetch abort), not a known-permanent one", async () => {
+    let attempts = 0;
+    const fn = vi.fn(async () => {
+      attempts++;
+      throw new Error("fetch failed");
+    });
+
+    await expect(withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })).rejects.toThrow("fetch failed");
+    expect(attempts).toBe(3);
   });
 });
 
