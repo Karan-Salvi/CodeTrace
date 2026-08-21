@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiFetch } from "../lib/api-client";
+import { wsClient } from "../lib/websocket";
 import { Badge } from "../components/ui/badge";
 import { CardSoft, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -94,6 +95,36 @@ export function PullRequestReview() {
     };
   }, [id, prId]);
 
+  useEffect(() => {
+    if (!id || !prId) return;
+
+    wsClient.connect();
+    wsClient.subscribeToPrReviewProgress(prId);
+
+    // Re-fetches the full review on every live update rather than patching
+    // state in place — the lightweight progress message only carries
+    // status/riskScore/riskLevel, not findings/riskFactors/failureReason,
+    // and this page is low-traffic enough that a full re-fetch per change
+    // is simpler and just as fast as merging partial state.
+    const refetch = () => {
+      apiFetch<PrReview[]>(`/repositories/${id}/pull-requests/${prId}/reviews`)
+        .then((data) => setReviews(data))
+        .catch(() => {
+          // A transient refetch failure here just means the next progress
+          // tick (500ms later) will try again — not worth surfacing as a
+          // page-level error on top of the initial load's own error state.
+        });
+    };
+
+    wsClient.on("pr-review-progress", refetch);
+    wsClient.on("pr-review-progress-complete", refetch);
+
+    return () => {
+      wsClient.off("pr-review-progress", refetch);
+      wsClient.off("pr-review-progress-complete", refetch);
+    };
+  }, [id, prId]);
+
   if (loading) {
     return <div className="text-body text-[14px] px-md py-lg">Loading review...</div>;
   }
@@ -112,11 +143,47 @@ export function PullRequestReview() {
     );
   }
 
+  // A FAILED review has null riskScore/findings — without this check it
+  // renders identically to a genuinely clean COMPLETE review with zero
+  // findings, giving no signal that the pipeline actually errored out.
+  if (latest.status === "FAILED") {
+    return (
+      <div className="flex flex-col gap-4 p-6">
+        <CardSoft>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Review Failed
+              <Badge variant="error">FAILED</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <span className="text-[13px] text-error-deep">
+              {latest.failureReason ?? "The review pipeline failed for an unknown reason."}
+            </span>
+          </CardContent>
+        </CardSoft>
+      </div>
+    );
+  }
+  if (latest.status === "PENDING" || latest.status === "RUNNING") {
+    return (
+      <div className="text-body text-[14px] px-md py-lg">
+        Review in progress ({latest.status.toLowerCase()})...
+      </div>
+    );
+  }
+
   const findings = latest.findings ?? [];
   const grouped = groupByCategory(findings);
 
   return (
     <div className="flex flex-col gap-4 p-6">
+      {latest.writebackFailedAt && (
+        <div className="text-[13px] text-warning-deep bg-warning-soft rounded-sm px-md py-sm">
+          This review completed successfully, but posting it back to GitHub failed — it isn't visible
+          on the pull request itself. The results below are accurate and saved.
+        </div>
+      )}
       <CardSoft>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

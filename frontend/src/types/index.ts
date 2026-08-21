@@ -108,6 +108,8 @@ export interface PrReview {
   riskLevel: RiskLevel | null;
   riskFactors: PrRiskFactor[] | null;
   findings: PrFinding[] | null;
+  failureReason: string | null;
+  writebackFailedAt: string | null;
   createdAt: string;
 }
 

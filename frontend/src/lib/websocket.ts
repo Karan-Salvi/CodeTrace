@@ -1,5 +1,5 @@
 import { getAccessToken } from "./auth";
-import type { Citation, RepositoryStatus } from "../types";
+import type { Citation, RepositoryStatus, PrReviewStatus, RiskLevel } from "../types";
 
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3000";
 
@@ -22,6 +22,17 @@ export interface ProgressMessage {
 
 export interface ProgressCompleteMessage {
   type: "progress-complete";
+}
+
+export interface PrReviewProgressMessage {
+  type: "pr-review-progress";
+  status: PrReviewStatus;
+  riskScore: number | null;
+  riskLevel: RiskLevel | null;
+}
+
+export interface PrReviewProgressCompleteMessage {
+  type: "pr-review-progress-complete";
 }
 
 export interface ChatCompleteMessage {
@@ -128,6 +139,12 @@ class WebSocketClient {
     const token = getAccessToken();
     if (!token) return;
     this.send("subscribe-progress", { repositoryId, token });
+  }
+
+  subscribeToPrReviewProgress(pullRequestId: string) {
+    const token = getAccessToken();
+    if (!token) return;
+    this.send("subscribe-pr-review-progress", { pullRequestId, token });
   }
 
   sendChatMessage(repositoryId: string, conversationId: string, question: string) {
