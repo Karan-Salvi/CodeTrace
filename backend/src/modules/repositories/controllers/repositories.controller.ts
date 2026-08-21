@@ -6,6 +6,7 @@ import {
   listRepositories,
   deleteRepository,
   listAvailableRepos,
+  getOwnedRepository,
 } from "../services/repository.service.js";
 import { getInstallUrl, createInstallation, listInstallations } from "../services/installation.service.js";
 import { mintInstallationToken } from "../services/github-app.service.js";
@@ -93,10 +94,7 @@ export async function getAvailableRepos(req: Request, res: Response) {
 }
 
 export async function getPullRequests(req: Request, res: Response) {
-  // Validate ownership
-  await prisma.repository.findFirstOrThrow({
-    where: { id: req.params.id as string, userId: req.user!.id },
-  });
+  await getOwnedRepository(req.user!.id, req.params.id as string);
 
   const prs = await prisma.pullRequest.findMany({
     where: { repositoryId: req.params.id as string },
@@ -158,13 +156,7 @@ export async function getPullRequestDiff(req: Request, res: Response) {
     throw AppError.badRequest("MISSING_FILE", "file query parameter is required");
   }
 
-  // Ownership check — using findFirst to pass tests that expect 404
-  const repo = await prisma.repository.findFirst({
-    where: { id: req.params.id as string, userId: req.user!.id },
-  });
-  if (!repo) {
-    throw AppError.notFound("Repository not found");
-  }
+  await getOwnedRepository(req.user!.id, req.params.id as string);
 
   const pullRequest = await prisma.pullRequest.findFirst({
     where: { id: req.params.prId as string, repositoryId: req.params.id as string },

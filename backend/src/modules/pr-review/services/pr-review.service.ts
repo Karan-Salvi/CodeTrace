@@ -44,6 +44,39 @@ function parseRawFindings(rawResponse: string): RawLlmFinding[] {
   }
 }
 
+// Same atomic-claim shape processPrReviewJob uses for the real queue path —
+// needed here too because runPrReview is also called directly (the eval
+// harness, evaluation.service.ts:121) without a pre-created row. Without
+// this, a second call for the same pullRequestId+commitSha (re-running an
+// eval scenario) throws an unhandled P2002 instead of either reusing the
+// completed result or safely retrying.
+async function claimOrCreateReview(
+  pullRequestId: string,
+  commitSha: string
+): Promise<{ review: Awaited<ReturnType<typeof prisma.prReview.create>>; alreadyComplete: boolean }> {
+  try {
+    const review = await prisma.prReview.create({
+      data: { pullRequestId, commitSha, status: "RUNNING" },
+    });
+    return { review, alreadyComplete: false };
+  } catch (err) {
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
+      throw err;
+    }
+    const existing = await prisma.prReview.findUniqueOrThrow({
+      where: { pullRequestId_commitSha: { pullRequestId, commitSha } },
+    });
+    if (existing.status === "COMPLETE") {
+      return { review: existing, alreadyComplete: true };
+    }
+    const claimed = await prisma.prReview.update({
+      where: { id: existing.id },
+      data: { status: "RUNNING", failureReason: null, writebackFailedAt: null },
+    });
+    return { review: claimed, alreadyComplete: false };
+  }
+}
+
 export async function runPrReview(
   pullRequestId: string,
   changedRanges: ChangedLineRange[],
@@ -66,11 +99,13 @@ export async function runPrReview(
   // to commit B, this would otherwise stamp the saved review with the
   // wrong commit). Falls back to headSha for callers that don't have a
   // specific commit in hand.
-  const review = existingReviewId
-    ? await prisma.prReview.findUniqueOrThrow({ where: { id: existingReviewId } })
-    : await prisma.prReview.create({
-        data: { pullRequestId, commitSha: commitSha ?? pullRequest.headSha, status: "RUNNING" },
-      });
+  const { review, alreadyComplete } = existingReviewId
+    ? { review: await prisma.prReview.findUniqueOrThrow({ where: { id: existingReviewId } }), alreadyComplete: false }
+    : await claimOrCreateReview(pullRequestId, commitSha ?? pullRequest.headSha);
+
+  if (alreadyComplete) {
+    return review;
+  }
 
   // pr-review.md pipeline: changed symbols -> one-hop dependency retrieval
   // -> hybrid retrieval -> AI review -> citation validation -> risk score.

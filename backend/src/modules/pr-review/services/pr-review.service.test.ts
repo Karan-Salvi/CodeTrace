@@ -136,6 +136,29 @@ describe("runPrReview", () => {
     expect(review.status).toBe("COMPLETE");
     expect(review.findings).toEqual([]);
   });
+
+  it("returns the existing COMPLETE review instead of throwing when called twice for the same pullRequestId+commitSha (e.g. re-running an eval scenario)", async () => {
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    const generateChatCompletionSpy = vi
+      .spyOn(llmService, "generateChatCompletion")
+      .mockResolvedValue(JSON.stringify([]));
+
+    const first = await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+    generateChatCompletionSpy.mockClear();
+
+    const second = await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+
+    expect(second.id).toBe(first.id);
+    expect(second.status).toBe("COMPLETE");
+    expect(generateChatCompletionSpy).not.toHaveBeenCalled();
+
+    const allReviews = await prisma.prReview.findMany({ where: { pullRequestId } });
+    expect(allReviews).toHaveLength(1);
+  });
 });
 
 describe("processPrReviewJob", () => {

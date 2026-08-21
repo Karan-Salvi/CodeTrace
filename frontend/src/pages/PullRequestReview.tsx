@@ -22,13 +22,23 @@ const CATEGORY_ORDER: PrFinding["category"][] = [
   "MAINTAINABILITY",
 ];
 
-function groupByCategory(findings: PrFinding[]): Map<PrFinding["category"], PrFinding[]> {
-  const grouped = new Map<PrFinding["category"], PrFinding[]>();
-  for (const finding of findings) {
+interface IndexedFinding {
+  finding: PrFinding;
+  index: number;
+}
+
+// Keyed by each finding's index in the original flat `findings` array, not
+// a per-category-local index — two different categories' first findings
+// would otherwise both be "index 0", making expandedIndex/diffCache collide
+// across categories (expanding one would show as expanded for both, and
+// the wrong file's diff would be served from the shared cache slot).
+function groupByCategory(findings: PrFinding[]): Map<PrFinding["category"], IndexedFinding[]> {
+  const grouped = new Map<PrFinding["category"], IndexedFinding[]>();
+  findings.forEach((finding, index) => {
     const existing = grouped.get(finding.category) ?? [];
-    existing.push(finding);
+    existing.push({ finding, index });
     grouped.set(finding.category, existing);
-  }
+  });
   return grouped;
 }
 
@@ -143,33 +153,33 @@ export function PullRequestReview() {
             </CardHeader>
             <CardContent>
               <ul className="flex flex-col gap-2">
-                {(grouped.get(category) ?? []).map((finding, i) => (
-                  <li key={i} className="flex flex-col gap-xs text-[13px]">
+                {(grouped.get(category) ?? []).map(({ finding, index }) => (
+                  <li key={index} className="flex flex-col gap-xs text-[13px]">
                     <div className="flex items-center justify-between gap-sm">
                       <span className="text-foreground font-medium">
                         {finding.file}:{finding.line}
                       </span>
-                      <Button variant="secondary-sm" onClick={() => toggleDiff(i, finding)}>
-                        {expandedIndex === i ? "Hide diff" : "View diff"}
+                      <Button variant="secondary-sm" onClick={() => toggleDiff(index, finding)}>
+                        {expandedIndex === index ? "Hide diff" : "View diff"}
                       </Button>
                     </div>
                     <span className="text-muted-foreground">{finding.explanation}</span>
-                    {expandedIndex === i && (
+                    {expandedIndex === index && (
                       <div className="mt-xs">
-                        {diffLoadingIndex === i ? (
+                        {diffLoadingIndex === index ? (
                           <div className="text-muted-foreground text-[12px] py-sm">Loading diff...</div>
-                        ) : diffErrors[i] ? (
-                          <div className="text-error-deep text-[12px] py-sm">{diffErrors[i]}</div>
-                        ) : diffCache[i]?.previewUnavailable ? (
+                        ) : diffErrors[index] ? (
+                          <div className="text-error-deep text-[12px] py-sm">{diffErrors[index]}</div>
+                        ) : diffCache[index]?.previewUnavailable ? (
                           <div className="text-muted-foreground text-[12px] py-sm">
                             Diff preview unavailable for this file.
                           </div>
-                        ) : diffCache[i] ? (
+                        ) : diffCache[index] ? (
                           <MonacoDiffViewer
                             line={finding.line}
-                            original={diffCache[i].original ?? ""}
-                            modified={diffCache[i].modified ?? ""}
-                            language={diffCache[i].language ?? "plaintext"}
+                            original={diffCache[index].original ?? ""}
+                            modified={diffCache[index].modified ?? ""}
+                            language={diffCache[index].language ?? "plaintext"}
                           />
                         ) : null}
                       </div>

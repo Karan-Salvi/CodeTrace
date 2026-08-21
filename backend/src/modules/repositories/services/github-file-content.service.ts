@@ -61,7 +61,12 @@ export async function fetchFileAtRef(
 
   const body = (await res.json()) as { content?: string; encoding?: string };
 
-  if (body.encoding !== "base64" || !body.content) {
+  // GitHub returns encoding:"base64" with content:"" for a genuinely
+  // empty (0-byte) file — that's real, valid content, not the
+  // "GitHub refused to serve this inline" case. Only a non-"base64"
+  // encoding (oversized/binary files GitHub declines to inline) means
+  // unavailable; `content` being falsy is expected and fine when it's "".
+  if (body.encoding !== "base64" || body.content === undefined) {
     return { content: "", tooLarge: true };
   }
 

@@ -119,7 +119,7 @@ export function PullRequests() {
                       Low Risk
                     </Badge>
                   )}
-                  <Button variant="outline" size="sm" asChild>
+                  <Button variant="secondary-sm" asChild>
                     <Link to={`/repositories/${id}/pull-requests/${pr.id}`}>
                       View Review
                     </Link>

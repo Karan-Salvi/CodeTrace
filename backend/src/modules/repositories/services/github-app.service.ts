@@ -16,9 +16,23 @@ function signAppJwt(): string {
   );
 }
 
+// Installation tokens are valid for ~1 hour — minting a fresh one on
+// every call (e.g. once per "View diff" click, or per finding in a PR
+// review) burns a JWT-sign + HTTP round trip to GitHub for a token
+// that's still perfectly valid. Cached per installation id, in-memory,
+// with a 60s safety margin before the real expiry.
+const tokenCache = new Map<string, { token: string; expiresAt: Date }>();
+const TOKEN_EXPIRY_SAFETY_MARGIN_MS = 60_000;
+
 export async function mintInstallationToken(
   githubInstallationId: bigint
 ): Promise<{ token: string; expiresAt: Date }> {
+  const cacheKey = githubInstallationId.toString();
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.expiresAt.getTime() - TOKEN_EXPIRY_SAFETY_MARGIN_MS > Date.now()) {
+    return cached;
+  }
+
   const appJwt = signAppJwt();
 
   const res = await fetch(
@@ -43,7 +57,9 @@ export async function mintInstallationToken(
   }
 
   const body = (await res.json()) as { token: string; expires_at: string };
-  return { token: body.token, expiresAt: new Date(body.expires_at) };
+  const result = { token: body.token, expiresAt: new Date(body.expires_at) };
+  tokenCache.set(cacheKey, result);
+  return result;
 }
 
 export interface GithubRepo {

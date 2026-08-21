@@ -14,7 +14,15 @@ export interface MonacoDiffViewerProps {
 export function MonacoDiffViewer({ line, original, modified, language }: MonacoDiffViewerProps) {
   const handleMount: DiffOnMount = (editor) => {
     const modifiedEditor = editor.getModifiedEditor();
-    modifiedEditor.revealLineInCenter(line);
+    const model = modifiedEditor.getModel();
+    const lineCount = model?.getLineCount() ?? 1;
+    // `line` comes from the LLM-emitted finding, never bounds-checked
+    // against the actual file — an off-by-one or hallucinated line
+    // number would otherwise be passed straight to Monaco and can throw
+    // inside this onMount callback, breaking the whole diff viewer for
+    // that finding instead of just showing a slightly-off scroll position.
+    const safeLine = Math.min(Math.max(line, 1), lineCount);
+    modifiedEditor.revealLineInCenter(safeLine);
   };
 
   return (

@@ -54,6 +54,18 @@ describe("fetchFileAtRef", () => {
     vi.unstubAllGlobals();
   });
 
+  it("returns real empty content (not tooLarge) for a genuinely empty 0-byte file", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ content: "", encoding: "base64" }) })
+    );
+
+    const result = await fetchFileAtRef("token123", "octocat", "hello-world", "src/__init__.py", "abc123");
+
+    expect(result).toEqual({ content: "", binary: false });
+    vi.unstubAllGlobals();
+  });
+
   it("marks a file as binary when the decoded content contains a NUL byte", async () => {
     const binaryContent = "PNG\0\0\0IHDR";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(base64Response(binaryContent)));

@@ -12,6 +12,7 @@ import {
 } from "../components/ui/empty-state";
 import { FolderGit2, Folder, UserCircle2, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import type { Variants } from "framer-motion";
 
 interface AvailableRepo {
   owner: string;
@@ -32,7 +33,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,

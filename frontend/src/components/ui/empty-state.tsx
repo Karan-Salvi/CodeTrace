@@ -2,9 +2,9 @@ import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { cn } from "../../lib/utils";
 
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 
-export const EmptyState = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+export const EmptyState = forwardRef<HTMLDivElement, HTMLMotionProps<"div">>(
   ({ className, ...props }, ref) => (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
