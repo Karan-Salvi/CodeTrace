@@ -11,6 +11,7 @@ import {
   getInstallations,
   getAvailableRepos,
   getPullRequests,
+  getPullRequestDiff,
 } from "../controllers/repositories.controller.js";
 import { getInstallationToken } from "../controllers/internal.controller.js";
 
@@ -28,6 +29,11 @@ repositoriesRoutes.get("/repositories", requireAuth, asyncHandler(getRepositorie
 repositoriesRoutes.delete("/repositories/:id", requireAuth, asyncHandler(deleteRepositoryHandler));
 
 repositoriesRoutes.get("/repositories/:id/pull-requests", requireAuth, asyncHandler(getPullRequests));
+repositoriesRoutes.get(
+  "/repositories/:id/pull-requests/:prId/diff",
+  requireAuth,
+  asyncHandler(getPullRequestDiff)
+);
 repositoriesRoutes.get(
   "/internal/repositories/:id/installation-token",
   requireInternalAuth,

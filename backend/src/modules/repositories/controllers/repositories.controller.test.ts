@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { createApp } from "../../../app.js";
 import { prisma } from "../../../database/client.js";
 import { env } from "../../../config/env.js";
+import * as githubFileContentService from "../services/github-file-content.service.js";
+import * as githubAppService from "../services/github-app.service.js";
 
 async function makeAuthedUser() {
   const user = await prisma.user.create({
@@ -454,5 +456,132 @@ describe("repositories routes", () => {
       expect(res.body.data.pullRequests[1].latestReview.id).toBe(latestReview.id);
       expect(res.body.data.pullRequests[1].latestReview.status).toBe("PENDING");
     });
+  });
+});
+
+describe("GET /repositories/:id/pull-requests/:prId/diff", () => {
+  const app = createApp();
+
+  beforeEach(async () => {
+    await prisma.pullRequest.deleteMany();
+    await prisma.repository.deleteMany();
+    await prisma.repositoryInstallation.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.pullRequest.deleteMany();
+    await prisma.repository.deleteMany();
+    await prisma.repositoryInstallation.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  async function setUp() {
+    const { user, token } = await makeAuthedUser();
+    const installation = await prisma.repositoryInstallation.create({
+      data: { userId: user.id, githubInstallationId: BigInt(1), permissions: {} },
+    });
+    const repository = await prisma.repository.create({
+      data: {
+        userId: user.id,
+        installationId: installation.id,
+        owner: "octocat",
+        name: "hello-world",
+        githubUrl: "https://github.com/octocat/hello-world",
+        defaultBranch: "main",
+      },
+    });
+    const pullRequest = await prisma.pullRequest.create({
+      data: {
+        repositoryId: repository.id,
+        githubPrNumber: 1,
+        title: "Fix bug",
+        author: "octocat",
+        baseSha: "base123",
+        headSha: "head456",
+      },
+    });
+    return { token, repository, pullRequest };
+  }
+
+  it("returns original/modified content and language for a normal file", async () => {
+    const { token, repository, pullRequest } = await setUp();
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "gh-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubFileContentService, "fetchFileAtRef").mockImplementation(async (_t, _o, _r, _path, ref) => {
+      return ref === "base123"
+        ? { content: "old content\n" }
+        : { content: "new content\n" };
+    });
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
+      .query({ file: "src/foo.ts" })
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ original: "old content\n", modified: "new content\n", language: "typescript" });
+  });
+
+  it("returns empty original for a file added in this PR (no version at baseSha)", async () => {
+    const { token, repository, pullRequest } = await setUp();
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "gh-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubFileContentService, "fetchFileAtRef").mockImplementation(async (_t, _o, _r, _path, ref) => {
+      return ref === "base123" ? null : { content: "brand new file\n" };
+    });
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
+      .query({ file: "src/new-file.ts" })
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ original: "", modified: "brand new file\n", language: "typescript" });
+  });
+
+  it("returns previewUnavailable when the file is binary or too large", async () => {
+    const { token, repository, pullRequest } = await setUp();
+    vi.spyOn(githubAppService, "mintInstallationToken").mockResolvedValue({
+      token: "gh-token",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.spyOn(githubFileContentService, "fetchFileAtRef").mockImplementation(async (_t, _o, _r, _path, ref) => {
+      return ref === "base123" ? { content: "", tooLarge: true } : { content: "", tooLarge: true };
+    });
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
+      .query({ file: "assets/huge.bin" })
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ previewUnavailable: true });
+  });
+
+  it("400s when the file query parameter is missing", async () => {
+    const { token, repository, pullRequest } = await setUp();
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("404s for a pull request belonging to a repository the user does not own", async () => {
+    const { repository, pullRequest } = await setUp();
+    const { token: otherToken } = await makeAuthedUser();
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
+      .query({ file: "src/foo.ts" })
+      .set("Authorization", `Bearer ${otherToken}`);
+
+    expect(res.status).toBe(404);
   });
 });

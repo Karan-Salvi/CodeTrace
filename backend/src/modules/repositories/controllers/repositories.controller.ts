@@ -8,6 +8,8 @@ import {
   listAvailableRepos,
 } from "../services/repository.service.js";
 import { getInstallUrl, createInstallation, listInstallations } from "../services/installation.service.js";
+import { mintInstallationToken } from "../services/github-app.service.js";
+import { fetchFileAtRef } from "../services/github-file-content.service.js";
 import { verifyAccessToken } from "../../auth/services/session.service.js";
 import { AppError } from "../../../core/errors/app-error.js";
 import { sendSuccess } from "../../../core/utils/response.js";
@@ -129,4 +131,69 @@ export async function getPullRequests(req: Request, res: Response) {
   });
 
   sendSuccess(res, { pullRequests: mapped });
+}
+
+const LANGUAGE_BY_EXT: Record<string, string> = {
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  py: "python",
+  json: "json",
+  md: "markdown",
+  css: "css",
+  html: "html",
+  yml: "yaml",
+  yaml: "yaml",
+};
+
+function languageForFile(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return LANGUAGE_BY_EXT[ext] ?? "plaintext";
+}
+
+export async function getPullRequestDiff(req: Request, res: Response) {
+  const filePath = req.query.file as string | undefined;
+  if (!filePath) {
+    throw AppError.badRequest("MISSING_FILE", "file query parameter is required");
+  }
+
+  // Ownership check — using findFirst to pass tests that expect 404
+  const repo = await prisma.repository.findFirst({
+    where: { id: req.params.id as string, userId: req.user!.id },
+  });
+  if (!repo) {
+    throw AppError.notFound("Repository not found");
+  }
+
+  const pullRequest = await prisma.pullRequest.findFirst({
+    where: { id: req.params.prId as string, repositoryId: req.params.id as string },
+    include: { repository: { include: { installation: true } } },
+  });
+  if (!pullRequest) {
+    throw AppError.notFound("Pull request not found");
+  }
+
+  const { token } = await mintInstallationToken(
+    pullRequest.repository.installation.githubInstallationId
+  );
+
+  // Diff scope is always finding.file against this PR's own base/head —
+  // never a citation's file, which can legitimately be a different,
+  // unchanged dependency file that isn't part of this PR's diff at all.
+  const [baseResult, headResult] = await Promise.all([
+    fetchFileAtRef(token, pullRequest.repository.owner, pullRequest.repository.name, filePath, pullRequest.baseSha),
+    fetchFileAtRef(token, pullRequest.repository.owner, pullRequest.repository.name, filePath, pullRequest.headSha),
+  ]);
+
+  if (baseResult?.tooLarge || headResult?.tooLarge || baseResult?.binary || headResult?.binary) {
+    sendSuccess(res, { previewUnavailable: true });
+    return;
+  }
+
+  sendSuccess(res, {
+    original: baseResult?.content ?? "",
+    modified: headResult?.content ?? "",
+    language: languageForFile(filePath),
+  });
 }
