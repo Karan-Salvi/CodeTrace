@@ -3,7 +3,9 @@ import { useParams } from "react-router-dom";
 import { apiFetch } from "../lib/api-client";
 import { Badge } from "../components/ui/badge";
 import { CardSoft, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import type { PrReview, RiskLevel, PrFinding } from "../types";
+import { Button } from "../components/ui/button";
+import { MonacoDiffViewer } from "../components/ui/MonacoDiffViewer";
+import type { PrReview, RiskLevel, PrFinding, PrDiffContent } from "../types";
 
 const RISK_BADGE_VARIANT: Record<RiskLevel, "success" | "warning" | "error"> = {
   LOW: "success",
@@ -35,6 +37,34 @@ export function PullRequestReview() {
   const [reviews, setReviews] = useState<PrReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [diffCache, setDiffCache] = useState<Record<number, PrDiffContent>>({});
+  const [diffLoadingIndex, setDiffLoadingIndex] = useState<number | null>(null);
+  const [diffErrors, setDiffErrors] = useState<Record<number, string>>({});
+
+  async function toggleDiff(index: number, finding: PrFinding) {
+    if (expandedIndex === index) {
+      setExpandedIndex(null);
+      return;
+    }
+    setExpandedIndex(index);
+    if (diffCache[index]) return;
+
+    setDiffLoadingIndex(index);
+    try {
+      const data = await apiFetch<PrDiffContent>(
+        `/repositories/${id}/pull-requests/${prId}/diff?file=${encodeURIComponent(finding.file)}`
+      );
+      setDiffCache((prev) => ({ ...prev, [index]: data }));
+    } catch (e) {
+      setDiffErrors((prev) => ({
+        ...prev,
+        [index]: e instanceof Error ? e.message : "Failed to load diff",
+      }));
+    } finally {
+      setDiffLoadingIndex(null);
+    }
+  }
 
   useEffect(() => {
     if (!id || !prId) return;
@@ -114,11 +144,36 @@ export function PullRequestReview() {
             <CardContent>
               <ul className="flex flex-col gap-2">
                 {(grouped.get(category) ?? []).map((finding, i) => (
-                  <li key={i} className="flex flex-col gap-1 text-[13px]">
-                    <span className="text-foreground font-medium">
-                      {finding.file}:{finding.line}
-                    </span>
+                  <li key={i} className="flex flex-col gap-xs text-[13px]">
+                    <div className="flex items-center justify-between gap-sm">
+                      <span className="text-foreground font-medium">
+                        {finding.file}:{finding.line}
+                      </span>
+                      <Button variant="secondary-sm" onClick={() => toggleDiff(i, finding)}>
+                        {expandedIndex === i ? "Hide diff" : "View diff"}
+                      </Button>
+                    </div>
                     <span className="text-muted-foreground">{finding.explanation}</span>
+                    {expandedIndex === i && (
+                      <div className="mt-xs">
+                        {diffLoadingIndex === i ? (
+                          <div className="text-muted-foreground text-[12px] py-sm">Loading diff...</div>
+                        ) : diffErrors[i] ? (
+                          <div className="text-error-deep text-[12px] py-sm">{diffErrors[i]}</div>
+                        ) : diffCache[i]?.previewUnavailable ? (
+                          <div className="text-muted-foreground text-[12px] py-sm">
+                            Diff preview unavailable for this file.
+                          </div>
+                        ) : diffCache[i] ? (
+                          <MonacoDiffViewer
+                            line={finding.line}
+                            original={diffCache[i].original ?? ""}
+                            modified={diffCache[i].modified ?? ""}
+                            language={diffCache[i].language ?? "plaintext"}
+                          />
+                        ) : null}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
