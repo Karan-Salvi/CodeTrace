@@ -121,3 +121,10 @@ export interface PullRequest {
   createdAt: string;
   latestReview: PrReview | null;
 }
+
+export interface PrDiffContent {
+  original?: string;
+  modified?: string;
+  language?: string;
+  previewUnavailable?: boolean;
+}
