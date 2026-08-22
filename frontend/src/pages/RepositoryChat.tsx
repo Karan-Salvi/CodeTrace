@@ -83,7 +83,15 @@ export function RepositoryChat() {
     setActiveCitation(citation);
     setChunkError("");
     activeChunkIdRef.current = citation.chunkId;
-    if (chunkCache[citation.chunkId]) return;
+    if (chunkCache[citation.chunkId]) {
+      // Already have this one — explicitly clear loading rather than
+      // leaving it as whatever a still-in-flight *different* citation's
+      // request set it to. That request's own finally block won't reset
+      // it either once it resolves, since activeChunkIdRef has already
+      // moved on to this citation by then.
+      setChunkLoading(false);
+      return;
+    }
 
     setChunkLoading(true);
     try {

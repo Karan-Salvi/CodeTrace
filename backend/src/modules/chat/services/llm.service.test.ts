@@ -68,6 +68,14 @@ describe("embedQuery / generateChatCompletion (integration, requires GEMINI_API_
     async () => {
       const text = await generateChatCompletion("You are a helpful assistant.", "Say hello in one word.");
       expect(text.length).toBeGreaterThan(0);
-    }
+    },
+    // gemini-3.6-flash's own documented latency variance (0.5s-40s,
+    // verified directly against this API key earlier — an internal
+    // "thinking" pass, not a code-side slowdown) exceeds vitest's default
+    // 15s test timeout often enough to make this real-API integration
+    // test flaky under the full suite. A longer timeout here is the
+    // correct fix — the retry/backoff logic being tested is fine; the
+    // model itself is just occasionally this slow.
+    45000
   );
 });
