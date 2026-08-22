@@ -130,3 +130,11 @@ export interface PrDiffContent {
   language?: string;
   previewUnavailable?: boolean;
 }
+
+export interface ChunkContent {
+  content: string;
+  language: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+}

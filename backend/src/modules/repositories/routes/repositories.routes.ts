@@ -12,6 +12,7 @@ import {
   getAvailableRepos,
   getPullRequests,
   getPullRequestDiff,
+  getChunkContent,
 } from "../controllers/repositories.controller.js";
 import { getInstallationToken } from "../controllers/internal.controller.js";
 
@@ -33,6 +34,11 @@ repositoriesRoutes.get(
   "/repositories/:id/pull-requests/:prId/diff",
   requireAuth,
   asyncHandler(getPullRequestDiff)
+);
+repositoriesRoutes.get(
+  "/repositories/:id/chunks/:chunkId",
+  requireAuth,
+  asyncHandler(getChunkContent)
 );
 repositoriesRoutes.get(
   "/internal/repositories/:id/installation-token",

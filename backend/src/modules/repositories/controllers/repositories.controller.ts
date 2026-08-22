@@ -189,3 +189,29 @@ export async function getPullRequestDiff(req: Request, res: Response) {
     language: languageForFile(filePath),
   });
 }
+
+// Chat citations point at a chunk's *current* indexed content, not a git
+// commit — there's no before/after to diff, so unlike getPullRequestDiff
+// this is a single Prisma read, no GitHub API call at all. chunks.language
+// is already stored as a real Monaco language id ("javascript" /
+// "typescript" / "python", per worker/src/parsing/ast_chunker.py's
+// LANGUAGE_BY_EXT), so no extension-based mapping is needed here either.
+export async function getChunkContent(req: Request, res: Response) {
+  await getOwnedRepository(req.user!.id, req.params.id as string);
+
+  const chunk = await prisma.chunk.findFirst({
+    where: { id: req.params.chunkId as string, repositoryId: req.params.id as string },
+    include: { file: { select: { path: true } } },
+  });
+  if (!chunk) {
+    throw AppError.notFound("Chunk not found");
+  }
+
+  sendSuccess(res, {
+    content: chunk.content,
+    language: chunk.language,
+    filePath: chunk.file.path,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+  });
+}

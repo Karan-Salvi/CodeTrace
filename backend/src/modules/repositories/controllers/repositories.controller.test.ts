@@ -6,6 +6,7 @@ import { prisma } from "../../../database/client.js";
 import { env } from "../../../config/env.js";
 import * as githubFileContentService from "../services/github-file-content.service.js";
 import * as githubAppService from "../services/github-app.service.js";
+import { processFixtureIndexJob } from "../../../../scripts/dev-fixture-worker.js";
 
 async function makeAuthedUser() {
   const user = await prisma.user.create({
@@ -581,6 +582,90 @@ describe("GET /repositories/:id/pull-requests/:prId/diff", () => {
       .get(`/repositories/${repository.id}/pull-requests/${pullRequest.id}/diff`)
       .query({ file: "src/foo.ts" })
       .set("Authorization", `Bearer ${otherToken}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /repositories/:id/chunks/:chunkId", () => {
+  const app = createApp();
+
+  beforeEach(async () => {
+    await prisma.symbolRelationship.deleteMany();
+    await prisma.chunk.deleteMany();
+    await prisma.embedding.deleteMany();
+    await prisma.file.deleteMany();
+    await prisma.repository.deleteMany();
+    await prisma.repositoryInstallation.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.symbolRelationship.deleteMany();
+    await prisma.chunk.deleteMany();
+    await prisma.embedding.deleteMany();
+    await prisma.file.deleteMany();
+    await prisma.repository.deleteMany();
+    await prisma.repositoryInstallation.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  async function setUp() {
+    const { user, token } = await makeAuthedUser();
+    const installation = await prisma.repositoryInstallation.create({
+      data: { userId: user.id, githubInstallationId: BigInt(1), permissions: {} },
+    });
+    const repository = await prisma.repository.create({
+      data: {
+        userId: user.id,
+        installationId: installation.id,
+        owner: "octocat",
+        name: "hello-world",
+        githubUrl: "https://github.com/octocat/hello-world",
+        defaultBranch: "main",
+      },
+    });
+    await processFixtureIndexJob(repository.id);
+    const chunk = await prisma.chunk.findFirstOrThrow({
+      where: { repositoryId: repository.id, symbol: "handleAuthError" },
+    });
+    return { token, repository, chunk };
+  }
+
+  it("returns the chunk's content, language, file path, and line range", async () => {
+    const { token, repository, chunk } = await setUp();
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/chunks/${chunk.id}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({
+      content: chunk.content,
+      language: "typescript",
+      filePath: "src/auth/handleAuthError.ts",
+      startLine: chunk.startLine,
+      endLine: chunk.endLine,
+    });
+  });
+
+  it("404s for a chunk belonging to a repository the user does not own", async () => {
+    const { repository, chunk } = await setUp();
+    const { token: otherToken } = await makeAuthedUser();
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/chunks/${chunk.id}`)
+      .set("Authorization", `Bearer ${otherToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("404s for a chunkId that doesn't exist", async () => {
+    const { token, repository } = await setUp();
+
+    const res = await request(app)
+      .get(`/repositories/${repository.id}/chunks/00000000-0000-0000-0000-000000000000`)
+      .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(404);
   });

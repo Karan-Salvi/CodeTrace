@@ -3,23 +3,28 @@ import { useParams } from "react-router-dom";
 import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
 import type { ChatCompleteMessage, WsErrorMessage } from "../lib/websocket";
-import type { Conversation, Message } from "../types";
+import type { Conversation, Message, Citation, ChunkContent } from "../types";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
 
 // Splits an answer's text on the backend's own citation-marker format
 // ([path/to/file.ts:10-25], chat.service.ts's CITATION_PATTERN) and
 // renders each occurrence that the server actually validated (present
-// in `citations`) as a distinct badge — any marker text NOT in
+// in `citations`) as a clickable badge — any marker text NOT in
 // `citations` is left as plain text, since the server didn't vouch for
 // it (docs/retrieval.md's citation-validation contract: unsupported
 // claims are stripped/regenerated server-side, so a marker surviving
 // into `answer` but missing from `citations` means it didn't pass
 // validation and must not be presented as a real reference).
-function renderAnswer(answer: string, citations: Message["citations"]) {
-  const validKeys = new Set(citations.map((c) => `${c.file}:${c.startLine}-${c.endLine}`));
+function renderAnswer(
+  answer: string,
+  citations: Message["citations"],
+  onCitationClick: (citation: Citation) => void
+) {
+  const citationByKey = new Map(citations.map((c) => [`${c.file}:${c.startLine}-${c.endLine}`, c]));
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -29,14 +34,17 @@ function renderAnswer(answer: string, citations: Message["citations"]) {
     const [full, file, start, end] = match;
     parts.push(answer.slice(lastIndex, match.index));
     const key = `${file}:${start}-${end}`;
-    if (validKeys.has(key)) {
+    const citation = citationByKey.get(key);
+    if (citation) {
       parts.push(
-        <span
+        <button
           key={`${match.index}-${key}`}
-          className="inline-block px-xs py-[1px] mx-[2px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline"
+          type="button"
+          onClick={() => onCitationClick(citation)}
+          className="inline-block px-xs py-[1px] mx-[2px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline hover:border-link hover:text-link transition-colors cursor-pointer"
         >
           {file}:{start}-{end}
-        </span>
+        </button>
       );
     } else {
       parts.push(full);
@@ -55,6 +63,31 @@ export function RepositoryChat() {
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // One citation viewer at a time, shown in a panel above the input box
+  // rather than expanded inline within the running answer text — a
+  // citation badge sits mid-sentence, so there's no natural place to grow
+  // a code block directly under it without breaking the paragraph flow.
+  const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
+  const [chunkCache, setChunkCache] = useState<Record<string, ChunkContent>>({});
+  const [chunkLoading, setChunkLoading] = useState(false);
+  const [chunkError, setChunkError] = useState("");
+
+  async function handleCitationClick(citation: Citation) {
+    setActiveCitation(citation);
+    setChunkError("");
+    if (chunkCache[citation.chunkId]) return;
+
+    setChunkLoading(true);
+    try {
+      const data = await apiFetch<ChunkContent>(`/repositories/${id}/chunks/${citation.chunkId}`);
+      setChunkCache((prev) => ({ ...prev, [citation.chunkId]: data }));
+    } catch (e) {
+      setChunkError(e instanceof Error ? e.message : "Failed to load code");
+    } finally {
+      setChunkLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -160,7 +193,9 @@ export function RepositoryChat() {
               }`}
             >
               <div className="text-[14px] leading-relaxed whitespace-pre-wrap">
-                {msg.role === "ASSISTANT" ? renderAnswer(msg.content, msg.citations) : msg.content}
+                {msg.role === "ASSISTANT"
+                  ? renderAnswer(msg.content, msg.citations, handleCitationClick)
+                  : msg.content}
               </div>
             </div>
           </div>
@@ -185,6 +220,34 @@ export function RepositoryChat() {
       </div>
 
       {error && <p className="text-error text-[14px] mb-sm">{error}</p>}
+
+      {activeCitation && (
+        <div className="flex-shrink-0 mb-md rounded-sm border border-hairline overflow-hidden">
+          <div className="flex items-center justify-between px-sm py-xs bg-canvas-soft border-b border-hairline">
+            <span className="text-[12px] font-mono text-mute">
+              {activeCitation.file}:{activeCitation.startLine}-{activeCitation.endLine}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveCitation(null)}
+              className="text-[12px] text-mute hover:text-ink transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+          {chunkLoading ? (
+            <div className="text-muted-foreground text-[12px] px-sm py-sm">Loading code...</div>
+          ) : chunkError ? (
+            <div className="text-error-deep text-[12px] px-sm py-sm">{chunkError}</div>
+          ) : chunkCache[activeCitation.chunkId] ? (
+            <MonacoCodeViewer
+              line={activeCitation.startLine}
+              content={chunkCache[activeCitation.chunkId].content}
+              language={chunkCache[activeCitation.chunkId].language}
+            />
+          ) : null}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="relative flex-shrink-0 border-t border-hairline pt-md">
         <Input
