@@ -72,10 +72,17 @@ export function RepositoryChat() {
   const [chunkCache, setChunkCache] = useState<Record<string, ChunkContent>>({});
   const [chunkLoading, setChunkLoading] = useState(false);
   const [chunkError, setChunkError] = useState("");
+  // Tracks which chunk is the "current" request, independent of React's
+  // batched state — clicking citation A then quickly citation B before A's
+  // fetch resolves must not let A's late response (loading/error state)
+  // clobber B's already-displayed result. Only a response whose chunkId
+  // still matches this ref when it resolves is allowed to update state.
+  const activeChunkIdRef = useRef<string | null>(null);
 
   async function handleCitationClick(citation: Citation) {
     setActiveCitation(citation);
     setChunkError("");
+    activeChunkIdRef.current = citation.chunkId;
     if (chunkCache[citation.chunkId]) return;
 
     setChunkLoading(true);
@@ -83,9 +90,13 @@ export function RepositoryChat() {
       const data = await apiFetch<ChunkContent>(`/repositories/${id}/chunks/${citation.chunkId}`);
       setChunkCache((prev) => ({ ...prev, [citation.chunkId]: data }));
     } catch (e) {
-      setChunkError(e instanceof Error ? e.message : "Failed to load code");
+      if (activeChunkIdRef.current === citation.chunkId) {
+        setChunkError(e instanceof Error ? e.message : "Failed to load code");
+      }
     } finally {
-      setChunkLoading(false);
+      if (activeChunkIdRef.current === citation.chunkId) {
+        setChunkLoading(false);
+      }
     }
   }
 
