@@ -15,6 +15,16 @@ export function PullRequests() {
   useEffect(() => {
     let mounted = true;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollCount = 0;
+    // Hard safety net, not just the terminal-status check below: a PR with
+    // NO review row at all (`latestReview: null` — never triggered, or a
+    // stuck/crashed pr-review worker that never even created one) can't be
+    // told apart from "about to start any second" by this page. Without a
+    // cap, that case alone keeps `isNonTerminal` true forever and the page
+    // polls indefinitely even after every review that WAS running has
+    // finished. ~2 minutes at 3s/poll is generous for a real in-flight
+    // review, past which continuing to poll isn't buying anything.
+    const MAX_POLLS = 40;
 
     const isNonTerminal = (pr: PullRequest) =>
       !pr.latestReview || pr.latestReview.status === "PENDING" || pr.latestReview.status === "RUNNING";
@@ -24,13 +34,16 @@ export function PullRequests() {
         const data = await apiFetch<{ pullRequests: PullRequest[] }>(`/repositories/${id}/pull-requests`);
         if (!mounted) return;
         setPrs(data.pullRequests);
+        pollCount++;
 
         // Stop polling once every row has reached a terminal state — a
         // completed/failed review never spontaneously changes again, so
         // continuing to poll would just be wasted requests forever on an
-        // otherwise-idle page.
+        // otherwise-idle page. Also stop at MAX_POLLS regardless (see
+        // comment above) so a permanently-unreviewed or stuck row can't
+        // keep this running forever.
         const stillWorking = data.pullRequests.some(isNonTerminal);
-        if (!stillWorking && pollTimer) {
+        if ((!stillWorking || pollCount >= MAX_POLLS) && pollTimer) {
           clearInterval(pollTimer);
           pollTimer = null;
         }
