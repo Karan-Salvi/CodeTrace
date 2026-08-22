@@ -14,18 +14,42 @@ export function PullRequests() {
 
   useEffect(() => {
     let mounted = true;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const isNonTerminal = (pr: PullRequest) =>
+      !pr.latestReview || pr.latestReview.status === "PENDING" || pr.latestReview.status === "RUNNING";
+
     const fetchPrs = async () => {
       try {
         const data = await apiFetch<{ pullRequests: PullRequest[] }>(`/repositories/${id}/pull-requests`);
-        if (mounted) setPrs(data.pullRequests);
+        if (!mounted) return;
+        setPrs(data.pullRequests);
+
+        // Stop polling once every row has reached a terminal state — a
+        // completed/failed review never spontaneously changes again, so
+        // continuing to poll would just be wasted requests forever on an
+        // otherwise-idle page.
+        const stillWorking = data.pullRequests.some(isNonTerminal);
+        if (!stillWorking && pollTimer) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
       } catch (err: any) {
         if (mounted) setError(err.message);
       } finally {
         if (mounted) setLoading(false);
       }
     };
+
     fetchPrs();
-    return () => { mounted = false; };
+    // 3s: fast enough to feel live on a page a user is actively watching,
+    // slow enough not to hammer the endpoint while reviews are in flight.
+    pollTimer = setInterval(fetchPrs, 3000);
+
+    return () => {
+      mounted = false;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   if (loading) {
