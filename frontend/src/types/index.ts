@@ -37,6 +37,15 @@ export interface Repository {
   updatedAt: string;
 }
 
+export interface CurrentUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
 export interface RepositoryInstallation {
   id: string;
   githubInstallationId: string;

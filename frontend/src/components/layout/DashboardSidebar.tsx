@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { FolderGit2, Settings, LogOut, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "../../lib/AuthContext";
 import { cn } from "../../lib/utils";
 import { BrandLogo } from "../ui/BrandLogo";
+import { apiFetch } from "../../lib/api-client";
+import type { CurrentUser } from "../../types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +23,21 @@ const navItems = [{ name: "Repositories", icon: FolderGit2, path: "/repositories
 export function DashboardSidebar() {
   const { pathname } = useLocation();
   const { logout } = useAuth();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<CurrentUser>("/auth/me")
+      .then((data) => mounted && setUser(data))
+      .catch(() => {
+        // Sidebar renders on every dashboard route — a failed fetch here
+        // just keeps the generic "Account" label; the page itself will
+        // surface any real auth problem via its own protected fetch.
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="w-[240px] flex-shrink-0 h-[100dvh] sticky top-0 bg-canvas border-r border-hairline flex flex-col overflow-hidden">
@@ -55,11 +73,17 @@ export function DashboardSidebar() {
           <DropdownMenuTrigger asChild>
             <button className="w-full flex items-center gap-2 hover:bg-canvas-soft p-1.5 rounded-md transition-colors cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-primary">
               <Avatar className="h-6 w-6 border border-hairline">
-                <AvatarFallback className="bg-primary/10 text-[10px] text-ink">
-                  <User className="w-3 h-3 text-mute" />
-                </AvatarFallback>
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <AvatarFallback className="bg-primary/10 text-[10px] text-ink">
+                    <User className="w-3 h-3 text-mute" />
+                  </AvatarFallback>
+                )}
               </Avatar>
-              <span className="text-[13px] font-medium text-ink flex-1">Account</span>
+              <span className="text-[13px] font-medium text-ink flex-1 truncate">
+                {user?.displayName || user?.username || "Account"}
+              </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[220px] p-1.5 rounded-xl bg-canvas border border-hairline shadow-[0_12px_32px_rgba(0,0,0,0.4)]" align="start" sideOffset={12}>

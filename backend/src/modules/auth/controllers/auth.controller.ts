@@ -5,11 +5,12 @@ import {
   exchangeCodeForProfile,
   upsertUserFromProfile,
 } from "../services/github-oauth.service.js";
-import { createSession, rotateSession, revokeSession } from "../services/session.service.js";
-import { callbackQuerySchema } from "../validators/auth.validators.js";
+import { createSession, rotateSession, revokeSession, revokeAllSessions } from "../services/session.service.js";
+import { callbackQuerySchema, updateProfileSchema } from "../validators/auth.validators.js";
 import { AppError } from "../../../core/errors/app-error.js";
 import { sendSuccess } from "../../../core/utils/response.js";
 import { env } from "../../../config/env.js";
+import { prisma } from "../../../database/client.js";
 
 const REFRESH_COOKIE = "codetrace_refresh";
 const STATE_COOKIE = "codetrace_oauth_state";
@@ -94,4 +95,40 @@ export async function logout(req: Request, res: Response) {
   }
   res.clearCookie(REFRESH_COOKIE);
   sendSuccess(res, { loggedOut: true });
+}
+
+export async function getMe(req: Request, res: Response) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, username: true, displayName: true, email: true, avatarUrl: true, createdAt: true },
+  });
+  if (!user) {
+    throw AppError.unauthorized("User not found");
+  }
+  sendSuccess(res, user);
+}
+
+export async function updateMe(req: Request, res: Response) {
+  const parsed = updateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw AppError.badRequest("INVALID_PROFILE", parsed.error.issues[0]?.message ?? "Invalid profile update");
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { displayName: parsed.data.displayName },
+    select: { id: true, username: true, displayName: true, email: true, avatarUrl: true, createdAt: true },
+  });
+  sendSuccess(res, user);
+}
+
+export async function deleteMe(req: Request, res: Response) {
+  // Every user-owned row (sessions, repository installations, repositories
+  // and everything cascading from them, conversations) is declared
+  // onDelete: Cascade in schema.prisma, so a single row delete here is
+  // enough — Postgres handles the cascade, no manual cleanup needed.
+  await revokeAllSessions(req.user!.id);
+  await prisma.user.delete({ where: { id: req.user!.id } });
+  res.clearCookie(REFRESH_COOKIE);
+  sendSuccess(res, { deleted: true });
 }

@@ -26,6 +26,7 @@ model User {
   id                String   @id @default(uuid())
   githubId          BigInt   @unique @map("github_id")
   username          String
+  displayName       String?  @map("display_name")
   email             String?
   avatarUrl         String?  @map("avatar_url")
   githubAccessToken String   @map("github_access_token") // encrypted at rest (docs/security.md)
