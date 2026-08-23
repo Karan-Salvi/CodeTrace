@@ -92,6 +92,51 @@ function markdownComponents(
   };
 }
 
+// Purely a frontend presentation effect — the backend has no token-by-token
+// streaming (askQuestion() / chat-stream.handler.ts return one complete
+// chat:complete payload, see the comment that used to sit where the
+// "thinking" dots are below). This reveals the already-complete answer a
+// few characters at a time so it *feels* like it's being typed, with zero
+// change to what's actually stored or sent — only ever applied to the one
+// message that just arrived this session (`stream` is false for anything
+// loaded from history, which renders instantly).
+function StreamingMarkdown({
+  content,
+  citations,
+  onCitationClick,
+  stream,
+  onTick,
+}: {
+  content: string;
+  citations: Message["citations"];
+  onCitationClick: (citation: Citation) => void;
+  stream: boolean;
+  onTick: () => void;
+}) {
+  const processed = citationsToMarkdownLinks(content, citations);
+  const [revealed, setRevealed] = useState(stream ? 0 : processed.length);
+
+  useEffect(() => {
+    if (!stream) return;
+    let i = 0;
+    const CHARS_PER_TICK = 3;
+    const interval = setInterval(() => {
+      i = Math.min(processed.length, i + CHARS_PER_TICK);
+      setRevealed(i);
+      onTick();
+      if (i >= processed.length) clearInterval(interval);
+    }, 15);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream]);
+
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents(citations, onCitationClick)}>
+      {processed.slice(0, revealed)}
+    </ReactMarkdown>
+  );
+}
+
 export function RepositoryChat() {
   const { id } = useParams();
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -101,6 +146,10 @@ export function RepositoryChat() {
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Only the assistant message that arrives via this session's own
+  // WebSocket gets the typewriter reveal — history loaded from
+  // GET .../messages on page load renders instantly.
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
   // Auto-grow with content, capped by the textarea's own max-h-[160px] —
   // reset to "auto" first so shrinking (e.g. after clearing on send) isn't
@@ -190,11 +239,13 @@ export function RepositoryChat() {
 
     const handleComplete = (payload: unknown) => {
       const msg = payload as ChatCompleteMessage;
+      const newId = `assistant-${Date.now()}`;
       setIsThinking(false);
+      setStreamingMessageId(newId);
       setMessages((prev) => [
         ...prev,
         {
-          id: `assistant-${Date.now()}`,
+          id: newId,
           conversationId: conversation?.id ?? "",
           role: "ASSISTANT",
           content: msg.answer,
@@ -255,6 +306,7 @@ export function RepositoryChat() {
     setError("");
     setMessages([]);
     setActiveCitation(null);
+    setStreamingMessageId(null);
     const conv = await apiFetch<Conversation>(`/repositories/${id}/conversations`, { method: "POST", data: {} });
     setConversation(conv);
   };
@@ -298,12 +350,13 @@ export function RepositoryChat() {
             >
               <div className="text-[14px] leading-relaxed">
                 {msg.role === "ASSISTANT" ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents(msg.citations, handleCitationClick)}
-                  >
-                    {citationsToMarkdownLinks(msg.content, msg.citations)}
-                  </ReactMarkdown>
+                  <StreamingMarkdown
+                    content={msg.content}
+                    citations={msg.citations}
+                    onCitationClick={handleCitationClick}
+                    stream={msg.id === streamingMessageId}
+                    onTick={() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" })}
+                  />
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}
@@ -312,13 +365,9 @@ export function RepositoryChat() {
           </div>
         ))}
         {isThinking && (
-          // The backend does not stream tokens — askQuestion() /
-          // chat-stream.handler.ts return one complete chat:complete
-          // message, no partial payloads. A fake per-character
-          // typewriter effect here would be showing motion that isn't
-          // backed by real incremental data, so this is a single
-          // "thinking" indicator instead, replaced by the full answer
-          // at once when chat:complete arrives.
+          // Shown while waiting for the one complete chat:complete payload
+          // (the backend doesn't stream tokens) — once it arrives,
+          // StreamingMarkdown above fakes the typing motion client-side.
           <div className="flex justify-start">
             <div className="px-md py-sm text-mute text-[14px] flex items-center gap-xs">
               <span className="inline-block w-1.5 h-1.5 bg-mute rounded-full animate-pulse" />
