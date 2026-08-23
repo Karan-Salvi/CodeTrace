@@ -3,6 +3,7 @@ import { prisma } from "../../../database/client.js";
 import { runPrReview, processPrReviewJob } from "./pr-review.service.js";
 import { processFixtureIndexJob } from "../../../../scripts/dev-fixture-worker.js";
 import * as llmService from "../../chat/services/llm.service.js";
+import * as retrievalService from "../../retrieval/services/retrieval.service.js";
 import * as githubDiffService from "./github-diff.service.js";
 import * as githubWritebackService from "./github-writeback.service.js";
 import * as githubAppService from "../../repositories/services/github-app.service.js";
@@ -96,6 +97,91 @@ describe("runPrReview", () => {
     expect(Array.isArray(review.findings)).toBe(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((review.findings as any[])[0].category).toBe("BUG");
+  });
+
+  it("sends the actual source content of the changed chunk to the LLM even when retrieval finds nothing else relevant", async () => {
+    // Regression: contextBlock used to render changedChunks/dependencies
+    // (ChunkRef[], which has no `content` field) as a bare "path: symbol"
+    // label, and relied entirely on retrieveContext's generic hybrid
+    // search to coincidentally re-find the same chunk with real content.
+    // Mocking retrieveContext to return [] (as it legitimately can on a
+    // real repo when nothing else is lexically/semantically similar)
+    // isolates whether the changed chunk's own content is sent
+    // independently of what retrieval happens to find.
+    vi.spyOn(retrievalService, "retrieveContext").mockResolvedValue([]);
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    const generateChatCompletionSpy = vi
+      .spyOn(llmService, "generateChatCompletion")
+      .mockResolvedValue({ text: JSON.stringify([]), usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 } });
+
+    await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+
+    // No afterEach(() => vi.restoreAllMocks()) in this file — mock.calls
+    // accumulates across every test's spyOn of the same export, so index
+    // [0] would flakily read an earlier test's call once this test runs
+    // as part of the full file rather than in isolation. The last call is
+    // always the one this test's own runPrReview invocation just made.
+    const calls = generateChatCompletionSpy.mock.calls;
+    const userPrompt = calls[calls.length - 1]?.[1] as string;
+    // Real content of the fixture's handleAuthError chunk (sample-chunks.ts) —
+    // must appear verbatim, not just the bare "src/auth/handleAuthError.ts: handleAuthError" label.
+    expect(userPrompt).toContain("TokenExpiredError");
+  });
+
+  it("labels the changed code separately from retrieved background context, so the LLM can tell them apart", async () => {
+    // Regression (found via the eval harness): even after the changed
+    // chunk's real content was included, unrelated files pulled in by
+    // retrieveContext (as generic hybrid-search "related" results) were
+    // concatenated into the SAME undifferentiated block with the same
+    // formatting — the LLM sometimes reviewed the unrelated retrieved
+    // file's content instead of the actual diff, with no structural
+    // signal telling it which one was the real change.
+    vi.spyOn(retrievalService, "retrieveContext").mockResolvedValue([
+      {
+        id: "unrelated-chunk-id",
+        repositoryId: "unused",
+        fileId: "unused",
+        symbol: "unrelatedFunction",
+        symbolType: "FUNCTION",
+        parentSymbol: null,
+        language: "typescript",
+        startLine: 1,
+        endLine: 3,
+        content: "function unrelatedFunction() { return 'nothing to do with the diff'; }",
+        filePath: "src/unrelated/Other.ts",
+      },
+    ]);
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    const generateChatCompletionSpy = vi
+      .spyOn(llmService, "generateChatCompletion")
+      .mockResolvedValue({ text: JSON.stringify([]), usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 } });
+
+    await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+
+    // No afterEach(() => vi.restoreAllMocks()) in this file — mock.calls
+    // accumulates across every test's spyOn of the same export, so index
+    // [0] would flakily read an earlier test's call once this test runs
+    // as part of the full file rather than in isolation. The last call is
+    // always the one this test's own runPrReview invocation just made.
+    const calls = generateChatCompletionSpy.mock.calls;
+    const userPrompt = calls[calls.length - 1]?.[1] as string;
+    const changedHeaderIndex = userPrompt.indexOf("CHANGED CODE");
+    const relatedHeaderIndex = userPrompt.indexOf("RELATED CONTEXT");
+    const changedContentIndex = userPrompt.indexOf("TokenExpiredError");
+    const unrelatedContentIndex = userPrompt.indexOf("unrelatedFunction() { return");
+
+    expect(changedHeaderIndex).toBeGreaterThanOrEqual(0);
+    expect(relatedHeaderIndex).toBeGreaterThan(changedHeaderIndex);
+    // The changed chunk's real content must sit under the CHANGED CODE
+    // header, and the unrelated retrieved chunk under RELATED CONTEXT —
+    // not both jumbled together in one undifferentiated block.
+    expect(changedContentIndex).toBeGreaterThan(changedHeaderIndex);
+    expect(changedContentIndex).toBeLessThan(relatedHeaderIndex);
+    expect(unrelatedContentIndex).toBeGreaterThan(relatedHeaderIndex);
   });
 
   it("does not throw when the LLM wraps its JSON reply in a markdown code fence", async () => {

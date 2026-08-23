@@ -118,14 +118,66 @@ This turns "the AI reviewer seems good" into a scored, reproducible claim.
 
 ## Running evaluations
 
+One-time (or after editing `evaluation/datasets/*.json` or
+`evaluation/fixtures/`) setup — seeds a dedicated fixture repository
+(`codetrace-eval/fixture-repo`, real embeddings via the real Gemini API,
+never touches real user repositories) and writes a short-lived auth token
+to `evaluation/.eval-fixture.json` (git-ignored):
+
 ```
-python evaluation/runner/retrieval_eval.py --repo <test-repo> --config hybrid
-python evaluation/runner/pr_eval.py --dataset evaluation/datasets/pr_scenarios.json
+cd backend && npm run seed:eval-fixture
 ```
 
-Reports are written to `evaluation/reports/` as timestamped JSON + a
-human-readable summary, so historical runs can be compared as retrieval
-strategy changes over time (e.g. before/after adding reranking).
+Then, with the backend dev server running:
+
+```
+python evaluation/runner/retrieval_eval.py                 # all 4 configs
+python evaluation/runner/retrieval_eval.py --config hybrid  # one config
+python evaluation/runner/pr_eval.py
+```
+
+And, offline (no server needed — imports the worker's real parser
+directly, run from the worker's own venv):
+
+```
+worker/.venv/Scripts/python.exe evaluation/runner/symbol_relationship_eval.py
+```
+
+Each of the three scoring scripts writes to `evaluation/reports/` as
+timestamped JSON + a human-readable `.md` summary, so historical runs can
+be compared as retrieval strategy changes over time (e.g. before/after
+adding reranking). The fixture's auth token expires (~15 min) —
+re-run `seed:eval-fixture` if a runner returns `401`.
+
+## Publishing results publicly
+
+The numbers above only prove anything if someone other than you can see
+them. `evaluation/runner/publish_results.py` turns the latest reports into
+two committed artifacts, run manually as a deliberate "publish" step
+(never automatic, consistent with this doc's "no continuous eval-on-every-
+commit" stance):
+
+```
+python evaluation/runner/publish_results.py
+```
+
+It reads the newest `*_retrieval.json` / `*_pr_review.json` in
+`evaluation/reports/`, re-runs `symbol_relationship_eval.py` for a fresh
+number, and writes:
+
+- **`frontend/public/eval-results.json`** — a plain static asset (not an
+  API response) served as-is by Vite. The public, unauthenticated
+  `/benchmarks` page (`frontend/src/pages/EvalResults.tsx`) fetches this
+  file at runtime — no backend route, no database access, so there is
+  nothing here that can leak real-user data.
+- **`README.md`** — regenerates the markdown table between
+  `<!-- EVAL_RESULTS_START -->` / `<!-- EVAL_RESULTS_END -->` markers, so
+  the same numbers shown on `/benchmarks` also render directly on the
+  GitHub repo page.
+
+Both files are checked in — commit them after every publish run so the
+public page and the README move together. Re-running is idempotent (the
+marker block gets replaced in place, not duplicated).
 
 ## What NOT to build here
 

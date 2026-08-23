@@ -124,17 +124,40 @@ export async function runPrReview(
     ? await retrieveContext(pullRequest.repositoryId, combinedQuery, embedQuery)
     : [];
 
-  const contextBlock = [...changedChunks, ...dependencies]
-    .map((c) => `${c.filePath}: ${c.symbol}`)
-    .concat(retrieved.map((c) => `[${c.filePath}:${c.startLine}-${c.endLine}]\n${c.content}`))
+  // ChunkRef (changedChunks/dependencies) has no content field — without
+  // fetching the real rows here, the LLM never saw the actual diff, only
+  // a bare "path: symbol" label, and reviewed whatever retrieveContext's
+  // generic hybrid search happened to find instead (sometimes unrelated
+  // files, sometimes nothing at all when nothing else was similar).
+  const chunkContentRows = await prisma.chunk.findMany({
+    where: { id: { in: [...changedChunks, ...dependencies].map((c) => c.chunkId) } },
+    select: { id: true, content: true },
+  });
+  const contentByChunkId = new Map(chunkContentRows.map((c) => [c.id, c.content]));
+
+  // Changed code and background context used to be concatenated into one
+  // undifferentiated block with identical formatting — the LLM had no
+  // structural signal for which content was the actual diff to review vs.
+  // generic hybrid-search "related" results, and sometimes reviewed the
+  // background instead. Explicit headers fix that ambiguity.
+  const changedBlock = [...changedChunks, ...dependencies]
+    .map((c) => `${c.filePath}: ${c.symbol}\n${contentByChunkId.get(c.chunkId) ?? ""}`)
+    .join("\n\n");
+  const relatedBlock = retrieved
+    .map((c) => `[${c.filePath}:${c.startLine}-${c.endLine}]\n${c.content}`)
     .join("\n\n");
 
   const systemPrompt =
     "You are a PR reviewer. Return ONLY a JSON array of findings. " +
     "Each finding: category (BUG|SECURITY|PERFORMANCE|LOGIC|TESTING|MAINTAINABILITY), " +
     "file, line, explanation, relatedSymbol, citationFile, citationStartLine, citationEndLine. " +
-    "Only report findings tied to a concrete correctness/security/performance/test-coverage concern.";
-  const userPrompt = `Changed symbols and context:\n${contextBlock}`;
+    "Only report findings tied to a concrete correctness/security/performance/test-coverage concern. " +
+    "Focus on the CHANGED CODE section — that is the actual diff being reviewed. " +
+    "RELATED CONTEXT is background only (callers, callees, and generically similar code); " +
+    "only report a finding there if it's directly relevant to understanding a problem in the changed code.";
+  const userPrompt =
+    `CHANGED CODE (review this):\n${changedBlock}` +
+    (relatedBlock ? `\n\nRELATED CONTEXT (background only):\n${relatedBlock}` : "");
 
   const llmStartedAt = Date.now();
   const { text: rawResponse, usage } = await generateChatCompletion(systemPrompt, userPrompt);

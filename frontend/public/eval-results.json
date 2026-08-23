@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T17:59:07.661757+00:00",
+  "generatedAt": "2026-08-23T18:29:57.715632+00:00",
   "retrieval": {
     "Vector": {
       "recall_at_5": 1,
@@ -23,11 +23,11 @@
     }
   },
   "prReview": {
-    "truePositives": 4,
-    "falsePositives": 10,
-    "falseNegatives": 8,
-    "precision": 0.2857142857142857,
-    "recall": 0.3333333333333333
+    "truePositives": 5,
+    "falsePositives": 1,
+    "falseNegatives": 7,
+    "precision": 0.8333333333333334,
+    "recall": 0.4166666666666667
   },
   "symbolRelationships": {
     "precision": 1.0,
