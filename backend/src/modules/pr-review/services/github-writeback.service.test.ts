@@ -164,7 +164,7 @@ describe("postReviewToGitHub", () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     vi.stubGlobal("fetch", mockFetch);
 
-    const result = await postReviewToGitHub(
+    await postReviewToGitHub(
       "token123",
       "octocat",
       "hello-world",

@@ -1,38 +1,38 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import express from "express";
+import request from "supertest";
 import { requireOperator } from "./operator.middleware.js";
 import { env } from "../../config/env.js";
+import { errorHandler } from "../errors/error-handler.js";
 
 describe("requireOperator", () => {
-  let req: any;
-  let res: any;
-  let next: any;
+  const app = express();
+  app.use((req, _res, next) => {
+    req.user = { id: "user-123", sessionId: "s1" };
+    next();
+  });
+  app.use(requireOperator);
+  app.get("/usage/summary", (_req, res) => res.json({ ok: true }));
+  app.use(errorHandler);
 
   beforeEach(() => {
-    req = { user: { id: "user-123" } };
-    res = {};
-    next = vi.fn();
     env.OPERATOR_USER_ID = "operator-456";
   });
 
-  it("calls next() with no error if user ID matches operator ID", () => {
+  it("allows the request through if the user ID matches the operator ID", async () => {
     env.OPERATOR_USER_ID = "user-123";
-    requireOperator(req, res, next);
-    expect(next).toHaveBeenCalledWith();
+    const res = await request(app).get("/usage/summary");
+    expect(res.status).toBe(200);
   });
 
-  it("calls next() with a forbidden AppError if user ID does not match operator ID", () => {
-    requireOperator(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0];
-    expect(err).toBeDefined();
-    expect(err.statusCode).toBe(403);
+  it("rejects with 403 if the user ID does not match the operator ID", async () => {
+    const res = await request(app).get("/usage/summary");
+    expect(res.status).toBe(403);
   });
 
-  it("calls next() with a forbidden AppError if env.OPERATOR_USER_ID is unset", () => {
+  it("rejects with 403 if env.OPERATOR_USER_ID is unset", async () => {
     env.OPERATOR_USER_ID = undefined;
-    requireOperator(req, res, next);
-    const err = next.mock.calls[0][0];
-    expect(err).toBeDefined();
-    expect(err.statusCode).toBe(403);
+    const res = await request(app).get("/usage/summary");
+    expect(res.status).toBe(403);
   });
 });

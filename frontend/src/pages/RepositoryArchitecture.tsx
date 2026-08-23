@@ -255,6 +255,10 @@ export function RepositoryArchitecture() {
   }, [id]);
 
   useEffect(() => {
+    // Standard fetch-on-mount — loadFileGraph() setting loading/error
+    // state synchronously at its top is the intended immediate loading
+    // indicator, not the cascading-render footgun this rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFileGraph();
   }, [loadFileGraph]);
 

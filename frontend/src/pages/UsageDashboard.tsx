@@ -133,6 +133,11 @@ export function UsageDashboard() {
   }, [range]);
 
   useEffect(() => {
+    // Standard fetch-on-mount/range-change — load() setting loading/error
+    // state synchronously at its top is the intended behavior here (an
+    // immediate loading indicator), not the cascading-render footgun
+    // this rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

@@ -47,8 +47,8 @@ export function PullRequests() {
           clearInterval(pollTimer);
           pollTimer = null;
         }
-      } catch (err: any) {
-        if (mounted) setError(err.message);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : "Failed to load pull requests");
       } finally {
         if (mounted) setLoading(false);
       }

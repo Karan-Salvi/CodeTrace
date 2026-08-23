@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
@@ -14,9 +14,15 @@ export function AppShell() {
   // A route change (nav link, back button, redirect after an action) is
   // the one thing DashboardSidebar's own onNavigate can't cover — this
   // catches every path, not just link clicks inside the drawer.
-  useEffect(() => {
+  // Adjusted during render (React's documented pattern for "reset state
+  // when a prop changes") instead of an effect — avoids an extra render
+  // pass and the react-hooks/set-state-in-effect footgun this exact
+  // shape (setState synchronously at an effect's top) is meant to catch.
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setMobileNavOpen(false);
-  }, [location.pathname]);
+  }
 
   // Every route nested under AppShell is dashboard-only — without this,
   // logging out (or a refresh-cookie expiry via handleUnauthorized)
