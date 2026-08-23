@@ -48,6 +48,52 @@ export async function getLatestConversation(req: Request, res: Response) {
   sendSuccess(res, conversation);
 }
 
+const TITLE_MAX_LENGTH = 60;
+
+export async function getConversations(req: Request, res: Response) {
+  const repository = await getOwnedRepository(req.user!.id, req.params.id as string);
+
+  const [conversations, messages] = await Promise.all([
+    prisma.conversation.findMany({
+      where: { repositoryId: repository.id, userId: req.user!.id },
+    }),
+    prisma.message.findMany({
+      where: { conversation: { repositoryId: repository.id, userId: req.user!.id } },
+      orderBy: { createdAt: "asc" },
+      select: { conversationId: true, role: true, content: true, createdAt: true },
+    }),
+  ]);
+
+  const messagesByConversation = new Map<string, typeof messages>();
+  for (const message of messages) {
+    const list = messagesByConversation.get(message.conversationId) ?? [];
+    list.push(message);
+    messagesByConversation.set(message.conversationId, list);
+  }
+
+  const summaries = conversations
+    .map((conversation) => {
+      const convoMessages = messagesByConversation.get(conversation.id) ?? [];
+      if (convoMessages.length === 0) return null; // reload-duplicate junk, never shown
+
+      const firstUserMessage = convoMessages.find((m) => m.role === "USER");
+      const rawTitle = firstUserMessage?.content.trim() ?? "Untitled conversation";
+      const title = rawTitle.length > TITLE_MAX_LENGTH ? `${rawTitle.slice(0, TITLE_MAX_LENGTH)}…` : rawTitle;
+
+      return {
+        id: conversation.id,
+        title,
+        messageCount: convoMessages.length,
+        lastMessageAt: convoMessages[convoMessages.length - 1]!.createdAt,
+        createdAt: conversation.createdAt,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+    .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+
+  sendSuccess(res, { conversations: summaries });
+}
+
 export async function getMessages(req: Request, res: Response) {
   await getOwnedRepository(req.user!.id, req.params.id as string);
 

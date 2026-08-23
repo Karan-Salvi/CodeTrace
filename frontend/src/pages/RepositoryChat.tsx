@@ -6,11 +6,17 @@ import type { Components } from "react-markdown";
 import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
 import type { ChatCompleteMessage, WsErrorMessage } from "../lib/websocket";
-import type { Conversation, Message, Citation, ChunkContent } from "../types";
+import type { Conversation, Message, Citation, ChunkContent, ConversationSummary } from "../types";
 import type { RepositoryContext } from "../components/layout/RepositoryLayout";
 import { Button } from "../components/ui/button";
 import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
-import { Plus, ArrowUp, Code2 } from "lucide-react";
+import { Plus, ArrowUp, Code2, Clock, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../components/ui/dropdown-menu";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
 
@@ -236,6 +242,8 @@ export function RepositoryChat() {
       }
     : null;
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [historyList, setHistoryList] = useState<ConversationSummary[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -428,16 +436,73 @@ export function RepositoryChat() {
     setConversation(conv);
   };
 
+  const loadHistory = async () => {
+    if (!id) return;
+    setHistoryLoading(true);
+    try {
+      const data = await apiFetch<{ conversations: ConversationSummary[] }>(`/repositories/${id}/conversations`);
+      setHistoryList(data.conversations);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load conversation history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const switchToConversation = async (summary: ConversationSummary) => {
+    if (!id) return;
+    setError("");
+    setActiveCitation(null);
+    setStreamingMessageId(null);
+    try {
+      const existing = await apiFetch<Message[]>(`/repositories/${id}/conversations/${summary.id}/messages`);
+      setConversation({ id: summary.id, repositoryId: id, userId: "", title: summary.title, createdAt: summary.createdAt });
+      setMessages(existing);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load conversation");
+    }
+  };
+
   useEffect(() => {
     setHeaderAction(
-      <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
-        <Plus className="w-3.5 h-3.5" />
-        New chat
-      </Button>
+      <div className="flex items-center gap-xs">
+        <DropdownMenu onOpenChange={(open) => open && loadHistory()}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="gap-xxs">
+              <Clock className="w-3.5 h-3.5" />
+              History
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[280px] max-h-[320px] overflow-y-auto">
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-md">
+                <Loader2 className="w-4 h-4 animate-spin text-mute" />
+              </div>
+            ) : !historyList || historyList.length === 0 ? (
+              <p className="text-[13px] text-mute px-sm py-sm">No previous conversations</p>
+            ) : (
+              historyList.map((summary) => (
+                <DropdownMenuItem
+                  key={summary.id}
+                  onSelect={() => switchToConversation(summary)}
+                  className="flex flex-col items-start gap-[2px] py-xs cursor-pointer"
+                >
+                  <span className="text-[13px] text-ink truncate w-full">{summary.title}</span>
+                  <span className="text-[11px] text-mute">{new Date(summary.lastMessageAt).toLocaleDateString()}</span>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
+          <Plus className="w-3.5 h-3.5" />
+          New chat
+        </Button>
+      </div>
     );
     return () => setHeaderAction(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation]);
+  }, [conversation, historyList, historyLoading]);
 
   return (
     <div className="flex flex-col h-full min-h-0 w-full max-w-[860px] mx-auto">

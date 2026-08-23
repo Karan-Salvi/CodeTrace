@@ -5,6 +5,7 @@ import { asyncHandler } from "../../../core/utils/async-handler.js";
 import {
   postConversation,
   getLatestConversation,
+  getConversations,
   getMessages,
 } from "../controllers/chat.controller.js";
 
@@ -24,6 +25,11 @@ chatRoutes.post(
   requireAuth,
   chatRateLimiter,
   asyncHandler(postConversation),
+);
+chatRoutes.get(
+  "/repositories/:id/conversations",
+  requireAuth,
+  asyncHandler(getConversations),
 );
 chatRoutes.get(
   "/repositories/:id/conversations/latest",

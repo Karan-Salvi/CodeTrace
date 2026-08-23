@@ -190,3 +190,11 @@ export interface SymbolGraphResponse {
   nodes: SymbolGraphNode[];
   edges: SymbolGraphEdge[];
 }
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  lastMessageAt: string;
+  createdAt: string;
+}
