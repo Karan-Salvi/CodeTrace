@@ -7,6 +7,21 @@ import type { FileGraphResponse, SymbolGraphResponse } from "../types";
 import { EmptyState, EmptyStateIcon, EmptyStateTitle, EmptyStateDescription } from "../components/ui/empty-state";
 import { Loader2, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
 
+function GraphLegend() {
+  return (
+    <div className="absolute bottom-sm left-sm bg-canvas border border-hairline rounded-md px-sm py-xs flex items-center gap-md text-[12px] text-mute">
+      <span className="flex items-center gap-xxs">
+        <span className="w-3 h-[2px] bg-success inline-block" />
+        Calls
+      </span>
+      <span className="flex items-center gap-xxs">
+        <span className="w-3 h-[2px] bg-mute inline-block" />
+        Imports
+      </span>
+    </div>
+  );
+}
+
 function fileGraphToFlow(graph: FileGraphResponse): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = graph.nodes.map((n, i) => ({
     id: n.id,
@@ -152,9 +167,10 @@ export function RepositoryArchitecture() {
           onNodeClick={showingSymbol ? undefined : handleFileNodeClick}
         >
           <Background />
-          <Controls />
+          <Controls position="bottom-right" />
           <MiniMap pannable zoomable />
         </ReactFlow>
+        <GraphLegend />
         {drillLoading && (
           <div className="absolute inset-0 bg-canvas/60 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-mute" />
