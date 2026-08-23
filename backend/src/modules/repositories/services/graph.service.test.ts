@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregateFileGraph, type FileRelationshipRow, type FileChunkRow } from "./graph.service.js";
+import { aggregateFileGraph, type FileRelationshipRow, type FileChunkRow, buildSymbolGraph, type SymbolChunkRef, type OutgoingEdgeRow, type IncomingEdgeRow } from "./graph.service.js";
 
 const chunks: FileChunkRow[] = [
   { fileId: "file-a", filePath: "src/a.ts", chunkId: "chunk-a1", symbol: "fnA1" },
@@ -79,5 +79,48 @@ describe("aggregateFileGraph", () => {
     const result = aggregateFileGraph([], []);
     expect(result.nodes).toHaveLength(0);
     expect(result.edges).toHaveLength(0);
+  });
+});
+
+describe("buildSymbolGraph", () => {
+  const root: SymbolChunkRef = { id: "root", symbol: "login", symbolType: "METHOD", filePath: "src/auth.ts", startLine: 10 };
+  const callee: SymbolChunkRef = { id: "callee", symbol: "hashPassword", symbolType: "FUNCTION", filePath: "src/crypto.ts", startLine: 3 };
+  const caller: SymbolChunkRef = { id: "caller", symbol: "handleLoginRequest", symbolType: "FUNCTION", filePath: "src/routes.ts", startLine: 20 };
+
+  it("includes the root node itself", () => {
+    const result = buildSymbolGraph(root, [], []);
+    expect(result.nodes.find((n) => n.id === "root")).toBeDefined();
+  });
+
+  it("adds a node and edge for each outgoing relationship", () => {
+    const outgoing: OutgoingEdgeRow[] = [{ relationshipType: "CALLS", target: callee, externalTarget: null }];
+    const result = buildSymbolGraph(root, outgoing, []);
+    expect(result.nodes.find((n) => n.id === "callee")).toBeDefined();
+    expect(result.edges).toContainEqual({ source: "root", target: "callee", type: "CALLS" });
+  });
+
+  it("adds a node and edge for each incoming relationship", () => {
+    const incoming: IncomingEdgeRow[] = [{ relationshipType: "CALLS", source: caller }];
+    const result = buildSymbolGraph(root, [], incoming);
+    expect(result.nodes.find((n) => n.id === "caller")).toBeDefined();
+    expect(result.edges).toContainEqual({ source: "caller", target: "root", type: "CALLS" });
+  });
+
+  it("renders an external target as a leaf node with external: true", () => {
+    const outgoing: OutgoingEdgeRow[] = [{ relationshipType: "CALLS", target: null, externalTarget: "console.log" }];
+    const result = buildSymbolGraph(root, outgoing, []);
+    const externalNode = result.nodes.find((n) => n.id === "external:console.log");
+    expect(externalNode).toMatchObject({ symbol: "console.log", external: true, symbolType: null, file: null, startLine: null });
+    expect(result.edges).toContainEqual({ source: "root", target: "external:console.log", type: "CALLS" });
+  });
+
+  it("dedupes the same target appearing via multiple relationship rows into one node, keeping one edge per relationship type", () => {
+    const outgoing: OutgoingEdgeRow[] = [
+      { relationshipType: "CALLS", target: callee, externalTarget: null },
+      { relationshipType: "CALLS", target: callee, externalTarget: null },
+    ];
+    const result = buildSymbolGraph(root, outgoing, []);
+    expect(result.nodes.filter((n) => n.id === "callee")).toHaveLength(1);
+    expect(result.edges.filter((e) => e.target === "callee")).toHaveLength(1);
   });
 });

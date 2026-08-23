@@ -71,3 +71,64 @@ export function aggregateFileGraph(relationships: FileRelationshipRow[], chunks:
 // trims the RELATIONSHIP_TYPES usage above — kept for the symbol-level
 // function in Task 3, which lives in this same file.
 void RELATIONSHIP_TYPES;
+
+export interface SymbolChunkRef {
+  id: string;
+  symbol: string;
+  symbolType: "FUNCTION" | "METHOD" | "CLASS" | "INTERFACE";
+  filePath: string;
+  startLine: number;
+}
+
+export interface OutgoingEdgeRow {
+  relationshipType: RelationshipTypeName;
+  target: SymbolChunkRef | null;
+  externalTarget: string | null;
+}
+
+export interface IncomingEdgeRow {
+  relationshipType: RelationshipTypeName;
+  source: SymbolChunkRef;
+}
+
+function chunkRefToNode(ref: SymbolChunkRef) {
+  return { id: ref.id, symbol: ref.symbol, symbolType: ref.symbolType, file: ref.filePath, startLine: ref.startLine, external: false };
+}
+
+export function buildSymbolGraph(root: SymbolChunkRef, outgoing: OutgoingEdgeRow[], incoming: IncomingEdgeRow[]) {
+  const nodesById = new Map<string, ReturnType<typeof chunkRefToNode> | { id: string; symbol: string; symbolType: null; file: null; startLine: null; external: true }>();
+  nodesById.set(root.id, chunkRefToNode(root));
+
+  const edgeKeys = new Set<string>();
+  const edges: Array<{ source: string; target: string; type: RelationshipTypeName }> = [];
+
+  for (const row of outgoing) {
+    const targetId = row.target ? row.target.id : `external:${row.externalTarget}`;
+    if (!nodesById.has(targetId)) {
+      nodesById.set(
+        targetId,
+        row.target
+          ? chunkRefToNode(row.target)
+          : { id: targetId, symbol: row.externalTarget!, symbolType: null, file: null, startLine: null, external: true }
+      );
+    }
+    const key = `root->${targetId}:${row.relationshipType}`;
+    if (!edgeKeys.has(key)) {
+      edgeKeys.add(key);
+      edges.push({ source: root.id, target: targetId, type: row.relationshipType });
+    }
+  }
+
+  for (const row of incoming) {
+    if (!nodesById.has(row.source.id)) {
+      nodesById.set(row.source.id, chunkRefToNode(row.source));
+    }
+    const key = `${row.source.id}->root:${row.relationshipType}`;
+    if (!edgeKeys.has(key)) {
+      edgeKeys.add(key);
+      edges.push({ source: row.source.id, target: root.id, type: row.relationshipType });
+    }
+  }
+
+  return { nodes: Array.from(nodesById.values()), edges };
+}
