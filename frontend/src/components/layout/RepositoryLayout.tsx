@@ -113,7 +113,7 @@ export function RepositoryLayout() {
       </div>
 
       <div className="flex flex-col md:flex-row w-full gap-lg flex-1 min-h-0">
-        <aside className="w-full md:w-56 shrink-0 flex flex-row md:flex-col gap-xs md:pr-lg md:border-r md:border-hairline">
+        <aside className="w-full md:w-56 shrink-0 flex flex-row md:flex-col gap-xs overflow-x-auto md:overflow-visible md:pr-lg md:border-r md:border-hairline">
           {TABS.map((tab) => {
             const path = `/repositories/${id}${tab.suffix}`;
             const active = location.pathname === path;
@@ -123,7 +123,7 @@ export function RepositoryLayout() {
                 key={tab.label}
                 to={path}
                 className={cn(
-                  "flex items-center gap-xs rounded-sm px-sm py-xs text-[14px] font-medium transition-colors",
+                  "flex items-center gap-xs rounded-sm px-sm py-xs text-[14px] font-medium transition-colors shrink-0 whitespace-nowrap",
                   active ? "bg-canvas-soft text-ink" : "text-mute hover:text-ink hover:bg-canvas-soft/50"
                 )}
               >

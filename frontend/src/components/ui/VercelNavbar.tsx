@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Menu } from "lucide-react";
 import { useAuth } from "../../lib/AuthContext";
 import { Button } from "./button";
 import {
@@ -13,6 +13,14 @@ import {
 } from "./dropdown-menu";
 import { Avatar, AvatarFallback } from "./avatar";
 import { BrandLogo } from "./BrandLogo";
+
+const NAV_LINKS = [
+  { href: "#features", label: "Features" },
+  { href: "#pipeline", label: "Solution" },
+  { href: "#about", label: "About" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "Community" },
+];
 
 export function VercelNavbar() {
   const { token, logout } = useAuth();
@@ -49,13 +57,11 @@ export function VercelNavbar() {
           {/* Main Links */}
           <nav className="ml-8 hidden md:flex items-center space-x-6 text-sm font-medium text-muted-foreground">
             {!token ? (
-              <>
-                <a href="#features" className="hover:text-white transition-colors cursor-pointer">Features</a>
-                <a href="#pipeline" className="hover:text-white transition-colors cursor-pointer">Solution</a>
-                <a href="#about" className="hover:text-white transition-colors cursor-pointer">About</a>
-                <a href="#pricing" className="hover:text-white transition-colors cursor-pointer">Pricing</a>
-                <a href="#faq" className="hover:text-white transition-colors cursor-pointer">Community</a>
-              </>
+              NAV_LINKS.map((link) => (
+                <a key={link.href} href={link.href} className="hover:text-white transition-colors cursor-pointer">
+                  {link.label}
+                </a>
+              ))
             ) : (
               <Link to="/repositories" className="hover:text-white transition-colors cursor-pointer">Dashboard</Link>
             )}
@@ -63,7 +69,7 @@ export function VercelNavbar() {
         </div>
 
         {/* Right Auth Section */}
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-2 sm:gap-4 items-center">
           {!token ? (
             <>
               <a
@@ -72,7 +78,35 @@ export function VercelNavbar() {
               >
                 Contact
               </a>
-              <Button onClick={() => navigate("/login")} className="rounded-full px-6 text-sm h-8">
+              {/* Below md, the nav links above are display:none — this
+                  dropdown is the only way a mobile visitor reaches
+                  Features/Pricing/etc. without it, the site's own
+                  section anchors are unreachable from a phone. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open navigation menu"
+                    className="flex md:hidden items-center justify-center h-8 w-8 rounded-full border border-white/15 text-white/80 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 p-2 rounded-xl bg-canvas-soft border border-white/10 shadow-lg" align="end">
+                  <DropdownMenuGroup>
+                    {NAV_LINKS.map((link) => (
+                      <DropdownMenuItem key={link.href} asChild className="py-2 cursor-pointer focus:bg-white/5">
+                        <a href={link.href}>{link.label}</a>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild className="py-2 cursor-pointer focus:bg-white/5">
+                    <a href="#faq">Contact</a>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={() => navigate("/login")} className="rounded-full px-4 sm:px-6 text-sm h-8">
                 Get Started
               </Button>
             </>

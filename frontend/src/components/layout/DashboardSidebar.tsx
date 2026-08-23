@@ -20,7 +20,13 @@ import {
 // design they were adapted from had them.
 const navItems = [{ name: "Repositories", icon: FolderGit2, path: "/repositories" }];
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+  // Set only by the mobile drawer (AppShell) so a nav/account click closes
+  // the overlay — the always-visible desktop sidebar has no "close" concept.
+  onNavigate?: () => void;
+}
+
+export function DashboardSidebar({ onNavigate }: DashboardSidebarProps = {}) {
   const { pathname } = useLocation();
   const { logout } = useAuth();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -41,7 +47,11 @@ export function DashboardSidebar() {
 
   return (
     <div className="w-[240px] flex-shrink-0 h-[100dvh] sticky top-0 bg-canvas border-r border-hairline flex flex-col overflow-hidden">
-      <Link to="/repositories" className="flex items-center gap-2 px-4 h-14 border-b border-hairline shrink-0">
+      <Link
+        to="/repositories"
+        onClick={onNavigate}
+        className="flex items-center gap-2 px-4 h-14 border-b border-hairline shrink-0"
+      >
         <BrandLogo className="w-5 h-5 text-ink" />
         <span className="font-semibold text-[14px] text-ink">CodeTrace</span>
       </Link>
@@ -55,6 +65,7 @@ export function DashboardSidebar() {
               <Link
                 key={item.name}
                 to={item.path}
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-colors text-[13px] font-medium group cursor-pointer",
                   active ? "bg-canvas-soft text-ink" : "text-mute hover:text-ink hover:bg-canvas-soft/50"
@@ -88,13 +99,19 @@ export function DashboardSidebar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[220px] p-1.5 rounded-xl bg-canvas border border-hairline shadow-[0_12px_32px_rgba(0,0,0,0.4)]" align="start" sideOffset={12}>
             <DropdownMenuItem asChild className="py-2 px-3 text-[13px] cursor-pointer focus:bg-canvas-soft rounded-md text-ink flex items-center justify-between">
-              <Link to="/settings">
+              <Link to="/settings" onClick={onNavigate}>
                 <span>Settings</span>
                 <Settings className="w-4 h-4 text-mute" />
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-hairline my-1" />
-            <DropdownMenuItem onClick={logout} className="py-2 px-3 text-[13px] flex items-center justify-between cursor-pointer focus:bg-canvas-soft rounded-md text-ink">
+            <DropdownMenuItem
+              onClick={() => {
+                logout();
+                onNavigate?.();
+              }}
+              className="py-2 px-3 text-[13px] flex items-center justify-between cursor-pointer focus:bg-canvas-soft rounded-md text-ink"
+            >
               <span>Log Out</span>
               <LogOut className="w-4 h-4 text-mute" />
             </DropdownMenuItem>

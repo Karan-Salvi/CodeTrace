@@ -949,7 +949,7 @@ export function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3xl sm:gap-4xl">
+          <div className="grid grid-cols-3 gap-md sm:gap-3xl md:gap-4xl">
             <div className="flex flex-col">
               <h4 className="text-[13px] font-medium text-white/45 mb-md">Resources</h4>
               <ul className="flex flex-col space-y-md">

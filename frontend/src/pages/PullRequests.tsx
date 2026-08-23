@@ -105,20 +105,20 @@ export function PullRequests() {
         {prs.map((pr, i) => (
           <div
             key={pr.id}
-            className={`flex items-center justify-between p-lg ${
+            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-sm p-lg ${
               i !== prs.length - 1 ? "border-b border-hairline" : ""
             }`}
           >
-            <div className="space-y-xxs">
-              <div className="flex items-center gap-xs">
-                <GitPullRequest className="w-4 h-4 text-mute" />
+            <div className="space-y-xxs min-w-0">
+              <div className="flex items-center gap-xs min-w-0">
+                <GitPullRequest className="w-4 h-4 text-mute shrink-0" />
                 <Link
                   to={pr.latestReview ? `/repositories/${id}/pull-requests/${pr.id}` : "#"}
-                  className="font-medium text-[14px] text-ink hover:underline"
+                  className="font-medium text-[14px] text-ink hover:underline truncate"
                 >
                   {pr.title}
                 </Link>
-                <span className="text-[13px] text-mute">#{pr.githubPrNumber}</span>
+                <span className="text-[13px] text-mute shrink-0">#{pr.githubPrNumber}</span>
               </div>
               <div className="flex items-center gap-xs text-[13px] text-mute">
                 <span>by {pr.author}</span>
@@ -127,9 +127,9 @@ export function PullRequests() {
               </div>
             </div>
 
-            <div>
+            <div className="shrink-0">
               {pr.latestReview ? (
-                <div className="flex items-center gap-sm">
+                <div className="flex items-center gap-sm flex-wrap">
                   {pr.latestReview.status === "PENDING" || pr.latestReview.status === "RUNNING" ? (
                     <Badge variant="warning" className="gap-xxs">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -222,11 +222,11 @@ export function PullRequestReview() {
               <ul className="flex flex-col gap-2">
                 {(grouped.get(category) ?? []).map(({ finding, index }) => (
                   <li key={index} className="flex flex-col gap-xs text-[13px]">
-                    <div className="flex items-center justify-between gap-sm">
-                      <span className="text-ink font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sm">
+                      <span className="text-ink font-medium break-all">
                         {finding.file}:{finding.line}
                       </span>
-                      <Button variant="secondary-sm" onClick={() => toggleDiff(index, finding)}>
+                      <Button variant="secondary-sm" onClick={() => toggleDiff(index, finding)} className="shrink-0 self-start sm:self-auto">
                         {expandedIndex === index ? "Hide diff" : "View diff"}
                       </Button>
                     </div>
