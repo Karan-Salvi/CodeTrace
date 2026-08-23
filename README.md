@@ -1,0 +1,26 @@
+# CodeTrace
+
+AI-powered code intelligence and PR review platform. Indexes a repository at the syntax level, answers questions with grounded citations, and reviews pull requests with contextual, risk-scored feedback.
+
+## Evaluation results
+
+<!-- EVAL_RESULTS_START -->
+
+_Last measured: 2026-08-23T17:59:07.661757+00:00_
+
+**Retrieval quality**
+
+| Config | Recall@5 | Precision@5 | MRR |
+| --- | --- | --- | --- |
+| Vector | 100% | 12% | 0.97 |
+| Keyword | 0% | 0% | 0.00 |
+| Hybrid | 100% | 12% | 0.97 |
+| Hybrid+Rerank | 100% | 12% | 1.00 |
+
+**PR review**: Precision 0.29, Recall 0.33 (TP=4 FP=10 FN=8)
+
+**Symbol relationships**: Precision 1.00, Recall 1.00
+
+Full numbers: the `/benchmarks` page once deployed, or run the harness yourself — see `evaluation/`.
+
+<!-- EVAL_RESULTS_END -->

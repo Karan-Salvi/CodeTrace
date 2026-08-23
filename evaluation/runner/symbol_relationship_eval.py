@@ -27,7 +27,7 @@ MANIFEST_PATH = REPO_ROOT / "evaluation" / "fixtures" / "manifest.json"
 EXPECTED_PATH = REPO_ROOT / "evaluation" / "datasets" / "symbol_relationships.json"
 
 
-def main() -> None:
+def run_check() -> dict:
     manifest = json.loads(MANIFEST_PATH.read_text())
     expected_edges = json.loads(EXPECTED_PATH.read_text())
 
@@ -58,16 +58,32 @@ def main() -> None:
     precision = len(true_positives) / len(extracted_set) if extracted_set else 0.0
     recall = len(true_positives) / len(expected_set) if expected_set else 0.0
 
-    print(f"Expected edges: {len(expected_set)}")
-    print(f"Extracted edges: {len(extracted_set)}")
-    print(f"True positives: {len(true_positives)}")
-    print(f"False positives (extracted but not expected): {len(false_positives)}")
-    for fp in sorted(false_positives):
+    return {
+        "expectedEdges": len(expected_set),
+        "extractedEdges": len(extracted_set),
+        "truePositives": len(true_positives),
+        "falsePositives": len(false_positives),
+        "falseNegatives": len(false_negatives),
+        "precision": precision,
+        "recall": recall,
+        "falsePositiveEdges": sorted(false_positives),
+        "falseNegativeEdges": sorted(false_negatives),
+    }
+
+
+def main() -> None:
+    result = run_check()
+
+    print(f"Expected edges: {result['expectedEdges']}")
+    print(f"Extracted edges: {result['extractedEdges']}")
+    print(f"True positives: {result['truePositives']}")
+    print(f"False positives (extracted but not expected): {result['falsePositives']}")
+    for fp in result["falsePositiveEdges"]:
         print(f"  + {fp}")
-    print(f"False negatives (expected but not extracted): {len(false_negatives)}")
-    for fn in sorted(false_negatives):
+    print(f"False negatives (expected but not extracted): {result['falseNegatives']}")
+    for fn in result["falseNegativeEdges"]:
         print(f"  - {fn}")
-    print(f"\nPrecision: {precision:.2f}  Recall: {recall:.2f}")
+    print(f"\nPrecision: {result['precision']:.2f}  Recall: {result['recall']:.2f}")
 
 
 if __name__ == "__main__":

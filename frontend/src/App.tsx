@@ -15,6 +15,7 @@ import { PullRequestReview } from "./pages/PullRequestReview";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/NotFound";
 import { RepositoryArchitecture } from "./pages/RepositoryArchitecture";
+import { EvalResults } from "./pages/EvalResults";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/success" element={<AuthSuccess />} />
+          <Route path="/benchmarks" element={<EvalResults />} />
           <Route element={<AppShell />}>
             <Route path="/repositories" element={<Repositories />} />
             <Route path="/repositories/new" element={<RepositoryImport />} />
