@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../database/client.js";
 import { mapChangedLinesToChunks } from "./diff-analyzer.service.js";
-import { getOneHopDependencies } from "./dependency-retrieval.service.js";
+import { getOneHopDependencies, hasTestCoverage } from "./dependency-retrieval.service.js";
 import { calculateRiskScore } from "./risk-score.service.js";
 import { retrieveContext } from "../../retrieval/services/retrieval.service.js";
 import { embedQuery, generateChatCompletion } from "../../chat/services/llm.service.js";
@@ -14,6 +14,7 @@ import { postReviewToGitHub } from "./github-writeback.service.js";
 import { mintInstallationToken } from "../../repositories/services/github-app.service.js";
 import type { PrReviewJobPayload } from "@codetrace/shared-types";
 import type { ChangedLineRange, PrFinding } from "../types/pr-review.types.js";
+import type { RetrievedChunk } from "../../retrieval/types/retrieval.types.js";
 
 interface RawLlmFinding {
   category: PrFinding["category"];
@@ -128,12 +129,45 @@ export async function runPrReview(
   // fetching the real rows here, the LLM never saw the actual diff, only
   // a bare "path: symbol" label, and reviewed whatever retrieveContext's
   // generic hybrid search happened to find instead (sometimes unrelated
-  // files, sometimes nothing at all when nothing else was similar).
-  const chunkContentRows = await prisma.chunk.findMany({
+  // files, sometimes nothing at all when nothing else was similar). Fetch
+  // the full RetrievedChunk-shaped rows so they can also be cited (see
+  // citableChunks below) — a finding correctly citing the actual changed
+  // code otherwise silently got citation: null unless retrieval ALSO
+  // happened to re-find that same chunk.
+  const changedAndDepChunkRows = await prisma.chunk.findMany({
     where: { id: { in: [...changedChunks, ...dependencies].map((c) => c.chunkId) } },
-    select: { id: true, content: true },
+    include: { file: { select: { path: true } } },
   });
-  const contentByChunkId = new Map(chunkContentRows.map((c) => [c.id, c.content]));
+  const contentByChunkId = new Map(changedAndDepChunkRows.map((c) => [c.id, c.content]));
+  const citableChunks: RetrievedChunk[] = [
+    ...retrieved,
+    ...changedAndDepChunkRows.map((c) => ({
+      id: c.id,
+      repositoryId: c.repositoryId,
+      fileId: c.fileId,
+      symbol: c.symbol,
+      symbolType: c.symbolType,
+      parentSymbol: c.parentSymbol,
+      language: c.language,
+      startLine: c.startLine,
+      endLine: c.endLine,
+      content: c.content,
+      filePath: c.file.path,
+    })),
+  ];
+
+  // hasTestCoverage was already real and already wired into the risk
+  // score, but never reached the LLM — without this, a TESTING finding
+  // was structurally impossible: the reviewer has no way to infer "no
+  // test covers this" from the changed code's content alone.
+  const uniqueChangedSymbols = [...new Set(changedChunks.map((c) => c.symbol))];
+  const testCoverageBySymbol = new Map(
+    await Promise.all(
+      uniqueChangedSymbols.map(
+        async (symbol) => [symbol, await hasTestCoverage(pullRequest.repositoryId, symbol)] as const
+      )
+    )
+  );
 
   // Changed code and background context used to be concatenated into one
   // undifferentiated block with identical formatting — the LLM had no
@@ -141,7 +175,14 @@ export async function runPrReview(
   // generic hybrid-search "related" results, and sometimes reviewed the
   // background instead. Explicit headers fix that ambiguity.
   const changedBlock = [...changedChunks, ...dependencies]
-    .map((c) => `${c.filePath}: ${c.symbol}\n${contentByChunkId.get(c.chunkId) ?? ""}`)
+    .map((c) => {
+      const coverageNote = testCoverageBySymbol.has(c.symbol)
+        ? testCoverageBySymbol.get(c.symbol)
+          ? ""
+          : " (no test file found for this symbol in the repository)"
+        : "";
+      return `${c.filePath}: ${c.symbol}${coverageNote}\n${contentByChunkId.get(c.chunkId) ?? ""}`;
+    })
     .join("\n\n");
   const relatedBlock = retrieved
     .map((c) => `[${c.filePath}:${c.startLine}-${c.endLine}]\n${c.content}`)
@@ -154,7 +195,9 @@ export async function runPrReview(
     "Only report findings tied to a concrete correctness/security/performance/test-coverage concern. " +
     "Focus on the CHANGED CODE section — that is the actual diff being reviewed. " +
     "RELATED CONTEXT is background only (callers, callees, and generically similar code); " +
-    "only report a finding there if it's directly relevant to understanding a problem in the changed code.";
+    "only report a finding there if it's directly relevant to understanding a problem in the changed code. " +
+    "A symbol marked \"(no test file found for this symbol in the repository)\" has no test coverage — " +
+    "report a TESTING finding for it if the change is non-trivial enough to warrant a test.";
   const userPrompt =
     `CHANGED CODE (review this):\n${changedBlock}` +
     (relatedBlock ? `\n\nRELATED CONTEXT (background only):\n${relatedBlock}` : "");
@@ -165,7 +208,7 @@ export async function runPrReview(
   const rawFindings: RawLlmFinding[] = parseRawFindings(rawResponse);
 
   const chunkByFileAndLines = new Map(
-    retrieved.map((c) => [`${c.filePath}:${c.startLine}-${c.endLine}`, c.id])
+    citableChunks.map((c) => [`${c.filePath}:${c.startLine}-${c.endLine}`, c.id])
   );
 
   const findings: PrFinding[] = rawFindings.map((f) => {
@@ -174,7 +217,7 @@ export async function runPrReview(
     const citation = chunkId
       ? { file: f.citationFile, startLine: f.citationStartLine, endLine: f.citationEndLine, chunkId }
       : null;
-    const validated = citation && validateCitation(citation, retrieved);
+    const validated = citation && validateCitation(citation, citableChunks);
 
     return {
       category: f.category,

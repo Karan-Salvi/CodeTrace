@@ -47,7 +47,7 @@ interface PrScenario {
   filePath: string;
   startLine: number;
   endLine: number;
-  category: "BUG" | "SECURITY" | "PERFORMANCE" | "LOGIC" | "TESTING" | "MAINTAINABILITY";
+  labeledIssues: Array<{ category: string; file: string }>;
 }
 
 function contentHash(content: string): string {

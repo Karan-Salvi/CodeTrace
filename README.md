@@ -6,7 +6,7 @@ AI-powered code intelligence and PR review platform. Indexes a repository at the
 
 <!-- EVAL_RESULTS_START -->
 
-_Last measured: 2026-08-23T18:29:57.715632+00:00_
+_Last measured: 2026-08-23T18:48:36.975883+00:00_
 
 **Retrieval quality**
 
@@ -17,7 +17,7 @@ _Last measured: 2026-08-23T18:29:57.715632+00:00_
 | Hybrid | 100% | 12% | 0.97 |
 | Hybrid+Rerank | 100% | 12% | 1.00 |
 
-**PR review**: Precision 0.83, Recall 0.42 (TP=5 FP=1 FN=7)
+**PR review**: Precision 0.94, Recall 0.77 (TP=17 FP=1 FN=5)
 
 **Symbol relationships**: Precision 1.00, Recall 1.00
 

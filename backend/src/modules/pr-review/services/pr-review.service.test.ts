@@ -4,6 +4,7 @@ import { runPrReview, processPrReviewJob } from "./pr-review.service.js";
 import { processFixtureIndexJob } from "../../../../scripts/dev-fixture-worker.js";
 import * as llmService from "../../chat/services/llm.service.js";
 import * as retrievalService from "../../retrieval/services/retrieval.service.js";
+import * as dependencyRetrievalService from "./dependency-retrieval.service.js";
 import * as githubDiffService from "./github-diff.service.js";
 import * as githubWritebackService from "./github-writeback.service.js";
 import * as githubAppService from "../../repositories/services/github-app.service.js";
@@ -128,6 +129,65 @@ describe("runPrReview", () => {
     // Real content of the fixture's handleAuthError chunk (sample-chunks.ts) —
     // must appear verbatim, not just the bare "src/auth/handleAuthError.ts: handleAuthError" label.
     expect(userPrompt).toContain("TokenExpiredError");
+  });
+
+  it("resolves a citation against the changed chunk itself, not only against retrieved chunks", async () => {
+    // Regression: chunkByFileAndLines (used to resolve/validate a
+    // finding's citation) was built only from `retrieved` — a finding
+    // that correctly cites the actual changed file/lines got citation:
+    // null unless retrieveContext ALSO coincidentally re-found that same
+    // chunk, silently degrading citation quality for exactly the content
+    // fix #1 made sure the LLM would see and cite.
+    vi.spyOn(retrievalService, "retrieveContext").mockResolvedValue([]);
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: JSON.stringify([
+        {
+          category: "BUG",
+          file: "src/auth/handleAuthError.ts",
+          line: 3,
+          explanation: "Does not distinguish network errors.",
+          relatedSymbol: "handleAuthError",
+          citationFile: "src/auth/handleAuthError.ts",
+          citationStartLine: 1,
+          citationEndLine: 12,
+        },
+      ]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
+
+    const review = await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const finding = (review.findings as any[])[0];
+    expect(finding.citation).not.toBeNull();
+    expect(finding.citation.file).toBe("src/auth/handleAuthError.ts");
+  });
+
+  it("tells the LLM when a changed symbol has no test coverage, so it can actually report a TESTING finding", async () => {
+    // Regression: hasTestCoverage (dependency-retrieval.service.ts) is
+    // real and already wired into the numeric risk score, but was never
+    // surfaced to the LLM prompt at all — the reviewer had no way to know
+    // whether tests existed for a changed symbol, so it could never
+    // produce a real "missing test coverage" finding regardless of how
+    // good the prompt or context was.
+    vi.spyOn(retrievalService, "retrieveContext").mockResolvedValue([]);
+    vi.spyOn(dependencyRetrievalService, "hasTestCoverage").mockResolvedValue(false);
+    vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
+    const generateChatCompletionSpy = vi
+      .spyOn(llmService, "generateChatCompletion")
+      .mockResolvedValue({ text: JSON.stringify([]), usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 } });
+
+    await runPrReview(pullRequestId, [
+      { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
+    ]);
+
+    const calls = generateChatCompletionSpy.mock.calls;
+    const userPrompt = calls[calls.length - 1]?.[1] as string;
+    expect(userPrompt).toContain("handleAuthError");
+    expect(userPrompt.toLowerCase()).toContain("no test file found");
   });
 
   it("labels the changed code separately from retrieved background context, so the LLM can tell them apart", async () => {

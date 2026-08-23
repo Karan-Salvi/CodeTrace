@@ -4,83 +4,117 @@
     "filePath": "src/db/UserQuery.ts",
     "startLine": 1,
     "endLine": 3,
-    "category": "SECURITY"
+    "labeledIssues": [
+      { "category": "SECURITY", "file": "src/db/UserQuery.ts" },
+      { "category": "TESTING", "file": "src/db/UserQuery.ts" }
+    ]
   },
   {
     "name": "sql-injection-search-query",
     "filePath": "src/db/SearchQuery.ts",
     "startLine": 1,
     "endLine": 4,
-    "category": "SECURITY"
+    "labeledIssues": [
+      { "category": "SECURITY", "file": "src/db/SearchQuery.ts" },
+      { "category": "TESTING", "file": "src/db/SearchQuery.ts" }
+    ]
   },
   {
     "name": "missing-auth-delete-repository",
     "filePath": "src/repository/DeleteRepository.ts",
     "startLine": 1,
     "endLine": 4,
-    "category": "SECURITY"
+    "labeledIssues": [
+      { "category": "SECURITY", "file": "src/repository/DeleteRepository.ts" },
+      { "category": "TESTING", "file": "src/repository/DeleteRepository.ts" }
+    ]
   },
   {
     "name": "missing-auth-update-settings",
     "filePath": "src/settings/UpdateSettings.ts",
     "startLine": 1,
     "endLine": 8,
-    "category": "SECURITY"
+    "labeledIssues": [
+      { "category": "SECURITY", "file": "src/settings/UpdateSettings.ts" },
+      { "category": "TESTING", "file": "src/settings/UpdateSettings.ts" }
+    ]
   },
   {
     "name": "no-rollback-charge-user",
     "filePath": "src/billing/ChargeUser.ts",
     "startLine": 1,
     "endLine": 9,
-    "category": "LOGIC"
+    "labeledIssues": [
+      { "category": "LOGIC", "file": "src/billing/ChargeUser.ts" },
+      { "category": "TESTING", "file": "src/billing/ChargeUser.ts" }
+    ]
   },
   {
     "name": "no-rollback-transfer-ownership",
     "filePath": "src/repository/TransferOwnership.ts",
     "startLine": 1,
     "endLine": 9,
-    "category": "LOGIC"
+    "labeledIssues": [
+      { "category": "LOGIC", "file": "src/repository/TransferOwnership.ts" },
+      { "category": "TESTING", "file": "src/repository/TransferOwnership.ts" }
+    ]
   },
   {
     "name": "null-handling-diff-parser",
     "filePath": "src/pr/DiffParser.ts",
     "startLine": 1,
     "endLine": 4,
-    "category": "BUG"
+    "labeledIssues": [
+      { "category": "BUG", "file": "src/pr/DiffParser.ts" },
+      { "category": "TESTING", "file": "src/pr/DiffParser.ts" }
+    ]
   },
   {
     "name": "null-handling-citation-formatter",
     "filePath": "src/chat/CitationFormatter.ts",
     "startLine": 1,
     "endLine": 3,
-    "category": "BUG"
+    "labeledIssues": [
+      { "category": "BUG", "file": "src/chat/CitationFormatter.ts" },
+      { "category": "TESTING", "file": "src/chat/CitationFormatter.ts" }
+    ]
   },
   {
     "name": "race-condition-job-claimer",
     "filePath": "src/indexing/JobClaimer.ts",
     "startLine": 1,
     "endLine": 9,
-    "category": "LOGIC"
+    "labeledIssues": [
+      { "category": "LOGIC", "file": "src/indexing/JobClaimer.ts" },
+      { "category": "TESTING", "file": "src/indexing/JobClaimer.ts" }
+    ]
   },
   {
     "name": "race-condition-rate-limiter",
     "filePath": "src/ratelimit/limiter.py",
     "startLine": 1,
     "endLine": 6,
-    "category": "LOGIC"
+    "labeledIssues": [
+      { "category": "LOGIC", "file": "src/ratelimit/limiter.py" },
+      { "category": "TESTING", "file": "src/ratelimit/limiter.py" }
+    ]
   },
   {
     "name": "missing-tests-risk-scorer",
     "filePath": "src/pr/RiskScorer.ts",
     "startLine": 1,
     "endLine": 8,
-    "category": "TESTING"
+    "labeledIssues": [
+      { "category": "TESTING", "file": "src/pr/RiskScorer.ts" }
+    ]
   },
   {
     "name": "missing-tests-cost-estimator",
     "filePath": "src/cost/estimator.py",
     "startLine": 1,
     "endLine": 4,
-    "category": "TESTING"
+    "labeledIssues": [
+      { "category": "TESTING", "file": "src/cost/estimator.py" }
+    ]
   }
 ]

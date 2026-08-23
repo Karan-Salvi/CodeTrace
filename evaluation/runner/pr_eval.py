@@ -39,7 +39,7 @@ def run_scenario(base_url: str, token: str, pull_request_id: str, scenario: dict
             "changedRanges": [
                 {"filePath": scenario["filePath"], "startLine": scenario["startLine"], "endLine": scenario["endLine"]}
             ],
-            "labeledIssues": [{"category": scenario["category"], "file": scenario["filePath"]}],
+            "labeledIssues": scenario["labeledIssues"],
         },
         timeout=120,
     )
