@@ -76,7 +76,8 @@ async def test_incremental_index_reembeds_only_changed_function(tmp_path: Path) 
     with (
          patch("src.indexing.full_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
          patch("src.indexing.full_index.clone_repository", new_callable=AsyncMock, return_value=(local_repo_path, initial_sha)),
-         patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536])
+         patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536]),
+         patch("src.indexing.full_index.estimate_embedding_cost_usd", return_value=0.05)
     ):
         await run_full_index(repository_id, job_id="job-full-2")
 
@@ -94,7 +95,8 @@ async def test_incremental_index_reembeds_only_changed_function(tmp_path: Path) 
     with (
          patch("src.indexing.incremental_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
          patch("src.indexing.incremental_index.clone_or_reuse", new_callable=AsyncMock, return_value=(local_repo_path, new_sha)),
-         patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.2] * 1536])
+         patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.2] * 1536]),
+         patch("src.indexing.incremental_index.estimate_embedding_cost_usd", return_value=0.05)
     ):
         await run_incremental_index(repository_id, job_id="job-inc-1")
 
@@ -104,7 +106,11 @@ async def test_incremental_index_reembeds_only_changed_function(tmp_path: Path) 
             {"rid": repository_id},
         )).fetchall()
         repo_row = (await conn.execute(
-            text("SELECT current_commit_sha, status FROM repositories WHERE id = :rid"), {"rid": repository_id}
+            text("SELECT current_commit_sha, status, embedding_cost_usd FROM repositories WHERE id = :rid"), {"rid": repository_id}
+        )).first()
+        usage_log_row = (await conn.execute(
+            text("SELECT cost_usd FROM usage_logs WHERE repository_id = :rid AND kind = 'INDEXING' ORDER BY created_at DESC LIMIT 1"),
+            {"rid": repository_id},
         )).first()
 
     assert repo_row is not None
@@ -112,6 +118,9 @@ async def test_incremental_index_reembeds_only_changed_function(tmp_path: Path) 
     assert "402" in chunks[0][0]
     assert repo_row[0] == new_sha
     assert repo_row[1] == "INDEXED"
+    assert float(repo_row[2]) == pytest.approx(0.10)
+    assert usage_log_row is not None
+    assert float(usage_log_row[0]) == pytest.approx(0.05)
     await engine.dispose()
 
 
