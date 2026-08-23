@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
 import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
 import type { ChatCompleteMessage, WsErrorMessage } from "../lib/websocket";
@@ -18,49 +21,76 @@ const EXAMPLE_QUESTIONS = [
   "What are the biggest files or modules?",
 ];
 
-// Splits an answer's text on the backend's own citation-marker format
-// ([path/to/file.ts:10-25], chat.service.ts's CITATION_PATTERN) and
-// renders each occurrence that the server actually validated (present
-// in `citations`) as a clickable badge — any marker text NOT in
-// `citations` is left as plain text, since the server didn't vouch for
-// it (docs/retrieval.md's citation-validation contract: unsupported
-// claims are stripped/regenerated server-side, so a marker surviving
-// into `answer` but missing from `citations` means it didn't pass
-// validation and must not be presented as a real reference).
-function renderAnswer(
-  answer: string,
+// Rewrites the backend's own citation-marker format
+// ([path/to/file.ts:10-25], chat.service.ts's CITATION_PATTERN) into a
+// markdown link with a "cite:<chunkId>" href, but only for markers the
+// server actually validated (present in `citations`) — a marker
+// surviving into `answer` but missing from `citations` means it didn't
+// pass validation (docs/retrieval.md) and is left as plain text rather
+// than presented as a real reference. `markdownComponents` below
+// intercepts "cite:" hrefs and renders the citation button instead of
+// a real anchor.
+function citationsToMarkdownLinks(answer: string, citations: Message["citations"]): string {
+  const citationByKey = new Map(citations.map((c) => [`${c.file}:${c.startLine}-${c.endLine}`, c]));
+  return answer.replace(CITATION_PATTERN, (full, file, start, end) => {
+    const citation = citationByKey.get(`${file}:${start}-${end}`);
+    return citation ? `[${file}:${start}-${end}](cite:${citation.chunkId})` : full;
+  });
+}
+
+function markdownComponents(
   citations: Message["citations"],
   onCitationClick: (citation: Citation) => void
-) {
-  const citationByKey = new Map(citations.map((c) => [`${c.file}:${c.startLine}-${c.endLine}`, c]));
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  CITATION_PATTERN.lastIndex = 0;
-
-  while ((match = CITATION_PATTERN.exec(answer)) !== null) {
-    const [full, file, start, end] = match;
-    parts.push(answer.slice(lastIndex, match.index));
-    const key = `${file}:${start}-${end}`;
-    const citation = citationByKey.get(key);
-    if (citation) {
-      parts.push(
-        <button
-          key={`${match.index}-${key}`}
-          type="button"
-          onClick={() => onCitationClick(citation)}
-          className="inline-block px-xs py-[1px] mx-[2px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline hover:border-link hover:text-link transition-colors cursor-pointer"
-        >
-          {file}:{start}-{end}
-        </button>
+): Components {
+  return {
+    a: ({ href, children }) => {
+      if (href?.startsWith("cite:")) {
+        const chunkId = href.slice("cite:".length);
+        const citation = citations.find((c) => c.chunkId === chunkId);
+        return (
+          <button
+            type="button"
+            onClick={() => citation && onCitationClick(citation)}
+            className="inline-block px-xs py-[1px] mx-[2px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline hover:border-link hover:text-link transition-colors cursor-pointer"
+          >
+            {children}
+          </button>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noreferrer" className="text-link underline hover:text-link-deep">
+          {children}
+        </a>
       );
-    } else {
-      parts.push(full);
-    }
-    lastIndex = match.index + full.length;
-  }
-  parts.push(answer.slice(lastIndex));
-  return parts;
+    },
+    p: ({ children }) => <p className="mb-sm last:mb-0">{children}</p>,
+    ul: ({ children }) => <ul className="list-disc pl-lg mb-sm space-y-xxs">{children}</ul>,
+    ol: ({ children }) => <ol className="list-decimal pl-lg mb-sm space-y-xxs">{children}</ol>,
+    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+    h1: ({ children }) => <h1 className="text-[16px] font-semibold text-ink mt-md mb-xs first:mt-0">{children}</h1>,
+    h2: ({ children }) => <h2 className="text-[15px] font-semibold text-ink mt-md mb-xs first:mt-0">{children}</h2>,
+    h3: ({ children }) => <h3 className="text-[14px] font-semibold text-ink mt-sm mb-xs first:mt-0">{children}</h3>,
+    strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+    code: ({ className, children }) => {
+      // remark assigns fenced blocks a "language-xxx" className; a bare
+      // inline `code` span gets none — that's the only reliable signal
+      // react-markdown gives to tell the two apart here.
+      const isBlock = Boolean(className);
+      if (isBlock) {
+        return (
+          <code className="block bg-canvas-soft-2 border border-hairline rounded-sm px-sm py-sm text-[12.5px] font-mono overflow-x-auto whitespace-pre">
+            {children}
+          </code>
+        );
+      }
+      return (
+        <code className="px-xs py-[1px] text-[12.5px] font-mono bg-canvas-soft-2 border border-hairline rounded-xs">
+          {children}
+        </code>
+      );
+    },
+    pre: ({ children }) => <pre className="mb-sm last:mb-0">{children}</pre>,
+  };
 }
 
 export function RepositoryChat() {
@@ -256,10 +286,17 @@ export function RepositoryChat() {
                   : "bg-transparent text-ink"
               }`}
             >
-              <div className="text-[14px] leading-relaxed whitespace-pre-wrap">
-                {msg.role === "ASSISTANT"
-                  ? renderAnswer(msg.content, msg.citations, handleCitationClick)
-                  : msg.content}
+              <div className="text-[14px] leading-relaxed">
+                {msg.role === "ASSISTANT" ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents(msg.citations, handleCitationClick)}
+                  >
+                    {citationsToMarkdownLinks(msg.content, msg.citations)}
+                  </ReactMarkdown>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
               </div>
             </div>
           </div>
