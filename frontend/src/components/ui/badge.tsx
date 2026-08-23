@@ -16,7 +16,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
           {
             "bg-primary text-on-primary": variant === "default",
             "bg-canvas-soft text-body": variant === "secondary",
-            "bg-link-bg-soft text-link-deep": variant === "success",
+            "bg-positive-soft text-positive-deep": variant === "success",
             "bg-warning-soft text-warning-deep": variant === "warning",
             "bg-error-soft text-error-deep": variant === "error",
           },

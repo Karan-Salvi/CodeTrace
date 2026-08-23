@@ -17,6 +17,9 @@
   --color-canvas-soft-2: var(--canvas-soft-2);
 
   --color-success: #0070f3;
+  --color-positive: #12805c;
+  --color-positive-soft: #d3f5e8;
+  --color-positive-deep: #0a6647;
   --color-error: #ee0000;
   --color-error-soft: #f7d4d6;
   --color-error-deep: #c50000;

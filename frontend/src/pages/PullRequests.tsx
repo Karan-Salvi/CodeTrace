@@ -68,7 +68,7 @@ export function PullRequests() {
   if (loading) {
     return (
       <div className="flex h-[200px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-mute" />
       </div>
     );
   }
@@ -76,19 +76,19 @@ export function PullRequests() {
   if (error) {
     return (
       <div className="flex h-[200px] flex-col items-center justify-center gap-2">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
-        <p className="text-sm text-destructive">{error}</p>
+        <AlertTriangle className="h-8 w-8 text-error" />
+        <p className="text-sm text-error-deep">{error}</p>
       </div>
     );
   }
 
   if (prs.length === 0) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50">
-        <GitPullRequest className="h-12 w-12 text-muted-foreground/50" />
+      <div className="flex h-[400px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-hairline bg-canvas-soft">
+        <GitPullRequest className="h-12 w-12 text-mute" />
         <div className="text-center">
-          <h3 className="text-lg font-medium text-foreground">No Pull Requests</h3>
-          <p className="text-sm text-muted-foreground">This repository has no reviewed pull requests yet.</p>
+          <h3 className="text-lg font-medium text-ink">No Pull Requests</h3>
+          <p className="text-sm text-mute">This repository has no reviewed pull requests yet.</p>
         </div>
       </div>
     );
@@ -97,30 +97,30 @@ export function PullRequests() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Pull Requests</h2>
-        <p className="text-muted-foreground">Automated code reviews for this repository.</p>
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">Pull Requests</h2>
+        <p className="text-mute">Automated code reviews for this repository.</p>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border border-hairline">
         {prs.map((pr, i) => (
           <div
             key={pr.id}
             className={`flex items-center justify-between p-4 ${
-              i !== prs.length - 1 ? "border-b" : ""
+              i !== prs.length - 1 ? "border-b border-hairline" : ""
             }`}
           >
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <GitPullRequest className="h-4 w-4 text-muted-foreground" />
+                <GitPullRequest className="h-4 w-4 text-mute" />
                 <Link
                   to={pr.latestReview ? `/repositories/${id}/pull-requests/${pr.id}` : "#"}
-                  className="font-medium hover:underline"
+                  className="font-medium text-ink hover:underline"
                 >
                   {pr.title}
                 </Link>
-                <span className="text-sm text-muted-foreground">#{pr.githubPrNumber}</span>
+                <span className="text-sm text-mute">#{pr.githubPrNumber}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-mute">
                 <span>by {pr.author}</span>
                 <span>•</span>
                 <span>{new Date(pr.createdAt).toLocaleDateString()}</span>
@@ -131,7 +131,7 @@ export function PullRequests() {
               {pr.latestReview ? (
                 <div className="flex items-center gap-3">
                   {pr.latestReview.status === "PENDING" || pr.latestReview.status === "RUNNING" ? (
-                    <Badge variant="secondary" className="gap-1 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
+                    <Badge variant="warning" className="gap-1">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       {pr.latestReview.status}
                     </Badge>

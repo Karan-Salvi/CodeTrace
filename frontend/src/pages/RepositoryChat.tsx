@@ -255,7 +255,7 @@ export function RepositoryChat() {
             </button>
           </div>
           {chunkLoading ? (
-            <div className="text-muted-foreground text-[12px] px-sm py-sm">Loading code...</div>
+            <div className="text-mute text-[12px] px-sm py-sm">Loading code...</div>
           ) : chunkError ? (
             <div className="text-error-deep text-[12px] px-sm py-sm">{chunkError}</div>
           ) : chunkCache[activeCitation.chunkId] ? (

@@ -197,7 +197,7 @@ export function PullRequestReview() {
         </CardHeader>
         <CardContent>
           {latest.riskFactors && latest.riskFactors.length > 0 ? (
-            <ul className="flex flex-col gap-1 text-[13px] text-muted-foreground">
+            <ul className="flex flex-col gap-1 text-[13px] text-mute">
               {latest.riskFactors.map((factor) => (
                 <li key={factor.code}>
                   {factor.reason} (+{factor.points})
@@ -205,13 +205,13 @@ export function PullRequestReview() {
               ))}
             </ul>
           ) : (
-            <span className="text-[13px] text-muted-foreground">No risk factors triggered.</span>
+            <span className="text-[13px] text-mute">No risk factors triggered.</span>
           )}
         </CardContent>
       </CardSoft>
 
       {findings.length === 0 ? (
-        <div className="text-muted-foreground text-[14px]">No findings for this review.</div>
+        <div className="text-mute text-[14px]">No findings for this review.</div>
       ) : (
         CATEGORY_ORDER.filter((category) => grouped.has(category)).map((category) => (
           <CardSoft key={category}>
@@ -223,22 +223,22 @@ export function PullRequestReview() {
                 {(grouped.get(category) ?? []).map(({ finding, index }) => (
                   <li key={index} className="flex flex-col gap-xs text-[13px]">
                     <div className="flex items-center justify-between gap-sm">
-                      <span className="text-foreground font-medium">
+                      <span className="text-ink font-medium">
                         {finding.file}:{finding.line}
                       </span>
                       <Button variant="secondary-sm" onClick={() => toggleDiff(index, finding)}>
                         {expandedIndex === index ? "Hide diff" : "View diff"}
                       </Button>
                     </div>
-                    <span className="text-muted-foreground">{finding.explanation}</span>
+                    <span className="text-mute">{finding.explanation}</span>
                     {expandedIndex === index && (
                       <div className="mt-xs">
                         {diffLoadingIndex === index ? (
-                          <div className="text-muted-foreground text-[12px] py-sm">Loading diff...</div>
+                          <div className="text-mute text-[12px] py-sm">Loading diff...</div>
                         ) : diffErrors[index] ? (
                           <div className="text-error-deep text-[12px] py-sm">{diffErrors[index]}</div>
                         ) : diffCache[index]?.previewUnavailable ? (
-                          <div className="text-muted-foreground text-[12px] py-sm">
+                          <div className="text-mute text-[12px] py-sm">
                             Diff preview unavailable for this file.
                           </div>
                         ) : diffCache[index] ? (
