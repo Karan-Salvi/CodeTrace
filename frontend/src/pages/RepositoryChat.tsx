@@ -1,17 +1,27 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
+import { useParams, useOutletContext } from "react-router-dom";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
 import type { ChatCompleteMessage, WsErrorMessage } from "../lib/websocket";
 import type { Conversation, Message, Citation, ChunkContent } from "../types";
+import type { RepositoryContext } from "../components/layout/RepositoryLayout";
 import { Button } from "../components/ui/button";
 import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
-import { Plus, ArrowUp } from "lucide-react";
+import { Plus, ArrowUp, Code2 } from "lucide-react";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
+
+// react-markdown sanitizes link URLs by default (XSS guard) and strips
+// any scheme it doesn't recognize — including our own "cite:" scheme —
+// down to an empty string. Without this override every citation link
+// silently lost its href and fell through to the plain-link renderer
+// with href="", which is why clicking one did nothing.
+function allowCiteUrls(url: string): string {
+  return url.startsWith("cite:") ? url : defaultUrlTransform(url);
+}
 
 const EXAMPLE_QUESTIONS = [
   "What does this repository do?",
@@ -37,9 +47,28 @@ function citationsToMarkdownLinks(answer: string, citations: Message["citations"
   });
 }
 
+interface RepoRef {
+  owner: string;
+  name: string;
+  ref: string;
+}
+
+// currentCommitSha pins the link to the exact code that was actually
+// indexed/cited — falling back to defaultBranch only covers a repo that
+// hasn't finished a first index yet (currentCommitSha still null).
+// Some citation paths carry backslashes (a Windows-path leak from
+// indexing, seen in real data — e.g. "app\\src\\Foo.jsx" alongside
+// "app/src/Bar.jsx" in the same answer) — GitHub URLs never accept
+// those, so normalize before building the link.
+function githubBlobUrl(citation: Citation, repo: RepoRef): string {
+  const path = citation.file.replace(/\\/g, "/");
+  return `https://github.com/${repo.owner}/${repo.name}/blob/${repo.ref}/${path}#L${citation.startLine}-L${citation.endLine}`;
+}
+
 function markdownComponents(
   citations: Message["citations"],
-  onCitationClick: (citation: Citation) => void
+  onCitationClick: (citation: Citation) => void,
+  repo: RepoRef | null
 ): Components {
   return {
     a: ({ href, children }) => {
@@ -47,13 +76,33 @@ function markdownComponents(
         const chunkId = href.slice("cite:".length);
         const citation = citations.find((c) => c.chunkId === chunkId);
         return (
-          <button
-            type="button"
-            onClick={() => citation && onCitationClick(citation)}
-            className="inline-block px-xs py-[1px] mx-[2px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline hover:border-link hover:text-link transition-colors cursor-pointer"
-          >
-            {children}
-          </button>
+          <span className="inline-flex items-center gap-[2px] mx-[2px]">
+            {citation && repo ? (
+              <a
+                href={githubBlobUrl(citation, repo)}
+                target="_blank"
+                rel="noreferrer"
+                title="Open on GitHub"
+                className="inline-block px-xs py-[1px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline hover:border-link hover:text-link transition-colors cursor-pointer"
+              >
+                {children}
+              </a>
+            ) : (
+              <span className="inline-block px-xs py-[1px] text-[11px] font-mono bg-canvas-soft-2 text-body rounded-xs border border-hairline">
+                {children}
+              </span>
+            )}
+            {citation && (
+              <button
+                type="button"
+                onClick={() => onCitationClick(citation)}
+                title="Preview inline"
+                className="text-mute hover:text-link transition-colors cursor-pointer"
+              >
+                <Code2 className="w-3 h-3" />
+              </button>
+            )}
+          </span>
         );
       }
       return (
@@ -106,12 +155,14 @@ function StreamingMarkdown({
   onCitationClick,
   stream,
   onTick,
+  repo,
 }: {
   content: string;
   citations: Message["citations"];
   onCitationClick: (citation: Citation) => void;
   stream: boolean;
   onTick: () => void;
+  repo: RepoRef | null;
 }) {
   const processed = citationsToMarkdownLinks(content, citations);
   const [revealed, setRevealed] = useState(stream ? 0 : processed.length);
@@ -131,7 +182,11 @@ function StreamingMarkdown({
   }, [stream]);
 
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents(citations, onCitationClick)}>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      urlTransform={allowCiteUrls}
+      components={markdownComponents(citations, onCitationClick, repo)}
+    >
       {processed.slice(0, revealed)}
     </ReactMarkdown>
   );
@@ -139,6 +194,13 @@ function StreamingMarkdown({
 
 export function RepositoryChat() {
   const { id } = useParams();
+  const { repository } = useOutletContext<RepositoryContext>();
+  // currentCommitSha is null until the first index finishes — defaultBranch
+  // is a reasonable fallback for a repo still mid-index, even though it
+  // can drift out from under a specific cited line over time.
+  const repoRef: RepoRef | null = repository
+    ? { owner: repository.owner, name: repository.name, ref: repository.currentCommitSha ?? repository.defaultBranch }
+    : null;
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -356,6 +418,7 @@ export function RepositoryChat() {
                     onCitationClick={handleCitationClick}
                     stream={msg.id === streamingMessageId}
                     onTick={() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" })}
+                    repo={repoRef}
                   />
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
