@@ -60,7 +60,7 @@ export function NotFound() {
             <ArrowLeft className="w-3.5 h-3.5" />
             Go back
           </Button>
-          <Button asChild variant="secondary-sm">
+          <Button asChild variant="ghost" className="border border-hairline text-ink px-md">
             <Link to={homePath}>{token ? "Repositories" : "Home"}</Link>
           </Button>
         </motion.div>
