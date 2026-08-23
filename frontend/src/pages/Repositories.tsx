@@ -102,7 +102,7 @@ export function Repositories() {
           <h1 className="text-[22px] font-semibold tracking-tight text-ink">Repositories</h1>
           <p className="text-[14px] text-mute mt-xxs">Syntax-level indexing and PR review across your connected repos.</p>
         </div>
-        <Button variant="secondary-sm" onClick={() => navigate("/repositories/new")} className="gap-xs shrink-0">
+        <Button variant="primary-sm" onClick={() => navigate("/repositories/new")} className="gap-xs shrink-0">
           <Plus className="w-3.5 h-3.5" />
           Connect Repository
         </Button>
@@ -151,7 +151,7 @@ export function Repositories() {
           <EmptyStateDescription>
             Connect a GitHub repository to start indexing, asking questions, and reviewing pull requests.
           </EmptyStateDescription>
-          <Button onClick={() => navigate("/repositories/new")} variant="secondary" className="h-[32px] text-[13px]">
+          <Button onClick={() => navigate("/repositories/new")} variant="primary-sm">
             Connect Repository
           </Button>
         </EmptyState>

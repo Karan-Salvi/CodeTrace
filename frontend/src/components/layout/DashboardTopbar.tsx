@@ -12,10 +12,10 @@ export function DashboardTopbar() {
 
       <div />
 
-      <Button asChild variant="secondary" className="h-[32px] px-3">
-        <Link to="/repositories/new" className="flex flex-row items-center justify-center gap-1.5 text-[13px] font-medium">
+      <Button asChild variant="primary-sm">
+        <Link to="/repositories/new" className="flex flex-row items-center justify-center gap-1.5">
           <span>Add New</span>
-          <Plus className="w-3.5 h-3.5 text-mute" />
+          <Plus className="w-3.5 h-3.5" />
         </Link>
       </Button>
     </div>
