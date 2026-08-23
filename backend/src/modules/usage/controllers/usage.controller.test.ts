@@ -52,6 +52,9 @@ describe("GET /usage/summary", () => {
     await prisma.usageLog.create({
       data: { repositoryId, requestId: "r2", kind: "PR_REVIEW", tokensUsed: 200, costUsd: 0.02 },
     });
+    await prisma.usageLog.create({
+      data: { repositoryId, requestId: "r3", kind: "INDEXING", tokensUsed: 0, costUsd: 0.05 },
+    });
 
     operatorToken = jwt.sign({ userId: operator.id, sessionId: "s1" }, process.env.JWT_ACCESS_SECRET!, { expiresIn: 900 });
     otherToken = jwt.sign({ userId: other.id, sessionId: "s2" }, process.env.JWT_ACCESS_SECRET!, { expiresIn: 900 });
@@ -77,10 +80,11 @@ describe("GET /usage/summary", () => {
   it("returns aggregated totals for the operator", async () => {
     const res = await request(app).get("/usage/summary").set("Authorization", `Bearer ${operatorToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.totals.calls).toBe(2);
+    expect(res.body.data.totals.calls).toBe(3);
     expect(res.body.data.totals.byKind.QA.calls).toBe(1);
     expect(res.body.data.totals.byKind.PR_REVIEW.calls).toBe(1);
-    expect(Number(res.body.data.totals.costUsd)).toBeCloseTo(0.03, 6);
+    expect(res.body.data.totals.byKind.INDEXING.calls).toBe(1);
+    expect(Number(res.body.data.totals.costUsd)).toBeCloseTo(0.08, 6);
   });
 
   it("includes the repository in topRepositories with owner/name", async () => {

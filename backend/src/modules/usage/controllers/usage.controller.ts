@@ -12,22 +12,16 @@ export async function getUsageSummary(req: Request, res: Response) {
   const { days } = parsed.data;
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  // Scoped to QA + PR_REVIEW only — a separate worker-side writer
-  // (worker/src/observability.py) already logs INDEXING rows here, and
-  // this dashboard is explicitly QA/PR-review-only (see the design spec's
-  // "What NOT to build"). Without this filter, real INDEXING rows would
-  // silently inflate totals.calls even today (their cost/tokens are
-  // currently 0, but the moment indexing cost tracking is wired up for
-  // real, an unfiltered query here would start misreporting "total cost"
-  // as including indexing when the page explicitly claims it doesn't).
+  // Now includes INDEXING logs as well.
   const logs = await prisma.usageLog.findMany({
-    where: { createdAt: { gte: cutoff }, kind: { in: ["QA", "PR_REVIEW"] } },
+    where: { createdAt: { gte: cutoff }, kind: { in: ["QA", "PR_REVIEW", "INDEXING"] } },
     include: { repository: { select: { id: true, owner: true, name: true } } },
   });
 
-  const byKind: Record<"QA" | "PR_REVIEW", { costUsd: number; tokens: number; calls: number }> = {
+  const byKind: Record<"QA" | "PR_REVIEW" | "INDEXING", { costUsd: number; tokens: number; calls: number }> = {
     QA: { costUsd: 0, tokens: 0, calls: 0 },
     PR_REVIEW: { costUsd: 0, tokens: 0, calls: 0 },
+    INDEXING: { costUsd: 0, tokens: 0, calls: 0 },
   };
   const byDay = new Map<string, { costUsd: number; calls: number }>();
   const byRepo = new Map<string, { owner: string; name: string; costUsd: number; calls: number }>();
@@ -41,7 +35,7 @@ export async function getUsageSummary(req: Request, res: Response) {
     totalCostUsd += cost;
     totalTokens += tokens;
 
-    if (log.kind === "QA" || log.kind === "PR_REVIEW") {
+    if (log.kind === "QA" || log.kind === "PR_REVIEW" || log.kind === "INDEXING") {
       byKind[log.kind].costUsd += cost;
       byKind[log.kind].tokens += tokens;
       byKind[log.kind].calls += 1;
