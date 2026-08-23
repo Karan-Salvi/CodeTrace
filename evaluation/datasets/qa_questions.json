@@ -1,0 +1,146 @@
+[
+  {
+    "question": "How are token-expiry authentication errors handled?",
+    "expectedChunks": [
+      {
+        "path": "src/auth/handleAuthError.ts",
+        "symbol": "handleAuthError"
+      }
+    ]
+  },
+  {
+    "question": "What happens when a login attempt throws an error?",
+    "expectedChunks": [
+      {
+        "path": "src/auth/AuthService.ts",
+        "symbol": "login"
+      }
+    ]
+  },
+  {
+    "question": "How does the app connect a new repository to an installation?",
+    "expectedChunks": [
+      {
+        "path": "src/repository/RepositoryService.ts",
+        "symbol": "connectRepository"
+      }
+    ]
+  },
+  {
+    "question": "How do we look up the active GitHub installation by id?",
+    "expectedChunks": [
+      {
+        "path": "src/repository/InstallationService.ts",
+        "symbol": "getActiveInstallation"
+      }
+    ]
+  },
+  {
+    "question": "How is a content hash computed for a chunk?",
+    "expectedChunks": [
+      {
+        "path": "src/hashing/hasher.py",
+        "symbol": "content_hash"
+      }
+    ]
+  },
+  {
+    "question": "What does storing a chunk actually do?",
+    "expectedChunks": [
+      {
+        "path": "src/hashing/chunk_store.py",
+        "symbol": "store_chunk"
+      }
+    ]
+  },
+  {
+    "question": "How is a user looked up by email address?",
+    "expectedChunks": [
+      {
+        "path": "src/db/UserQuery.ts",
+        "symbol": "findUserByEmail"
+      }
+    ]
+  },
+  {
+    "question": "How does repository search by name work?",
+    "expectedChunks": [
+      {
+        "path": "src/db/SearchQuery.ts",
+        "symbol": "searchRepositories"
+      }
+    ]
+  },
+  {
+    "question": "What does deleting a repository do?",
+    "expectedChunks": [
+      {
+        "path": "src/repository/DeleteRepository.ts",
+        "symbol": "deleteRepository"
+      }
+    ]
+  },
+  {
+    "question": "How are a user's settings updated?",
+    "expectedChunks": [
+      {
+        "path": "src/settings/UpdateSettings.ts",
+        "symbol": "updateUserSettings"
+      }
+    ]
+  },
+  {
+    "question": "What happens when a user is charged and the charge is recorded?",
+    "expectedChunks": [
+      {
+        "path": "src/billing/ChargeUser.ts",
+        "symbol": "chargeAndRecord"
+      }
+    ]
+  },
+  {
+    "question": "How does repository ownership get transferred between users?",
+    "expectedChunks": [
+      {
+        "path": "src/repository/TransferOwnership.ts",
+        "symbol": "transferOwnership"
+      }
+    ]
+  },
+  {
+    "question": "How is a diff header line parsed to get the source commit sha?",
+    "expectedChunks": [
+      {
+        "path": "src/pr/DiffParser.ts",
+        "symbol": "parseDiffHeader"
+      }
+    ]
+  },
+  {
+    "question": "How is a citation formatted for display?",
+    "expectedChunks": [
+      {
+        "path": "src/chat/CitationFormatter.ts",
+        "symbol": "formatCitation"
+      }
+    ]
+  },
+  {
+    "question": "How does a worker claim a pending index job?",
+    "expectedChunks": [
+      {
+        "path": "src/indexing/JobClaimer.ts",
+        "symbol": "claimJob"
+      }
+    ]
+  },
+  {
+    "question": "How is the PR review risk score calculated from findings?",
+    "expectedChunks": [
+      {
+        "path": "src/pr/RiskScorer.ts",
+        "symbol": "calculateRiskScore"
+      }
+    ]
+  }
+]

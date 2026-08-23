@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "../../../database/client.js";
 import { runRetrievalEval } from "./evaluation.service.js";
 import { processFixtureIndexJob } from "../../../../scripts/dev-fixture-worker.js";
+import * as rerankerService from "../../retrieval/services/reranker.service.js";
 
 describe("runRetrievalEval", () => {
   let repositoryId: string;
@@ -57,6 +58,29 @@ describe("runRetrievalEval", () => {
     await prisma.repository.deleteMany();
     await prisma.repositoryInstallation.deleteMany();
     await prisma.user.deleteMany();
+  });
+
+  it("HYBRID_RERANKED calls the reranker and can reorder results differently than HYBRID", async () => {
+    // Second question so there's more than one candidate to reorder.
+    await prisma.evalQuestion.create({
+      data: {
+        repositoryId,
+        question: "login",
+        expectedChunks: [{ path: "src/auth/AuthService.ts", symbol: "login" }],
+      },
+    });
+
+    const rerankSpy = vi.spyOn(rerankerService, "rerank");
+
+    await runRetrievalEval(repositoryId, "HYBRID_RERANKED");
+
+    expect(rerankSpy).toHaveBeenCalled();
+    rerankSpy.mockRestore();
+
+    const plainHybridSpy = vi.spyOn(rerankerService, "rerank");
+    await runRetrievalEval(repositoryId, "HYBRID");
+    expect(plainHybridSpy).not.toHaveBeenCalled();
+    plainHybridSpy.mockRestore();
   });
 
   it("scores a KEYWORD_ONLY run and writes real (not estimated) metrics", async () => {

@@ -114,3 +114,4 @@ docs/superpowers
 docs/plans
 
 .github/
+evaluation/.eval-fixture.json

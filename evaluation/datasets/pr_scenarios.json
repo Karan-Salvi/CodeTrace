@@ -1,0 +1,86 @@
+[
+  {
+    "name": "sql-injection-user-query",
+    "filePath": "src/db/UserQuery.ts",
+    "startLine": 1,
+    "endLine": 3,
+    "category": "SECURITY"
+  },
+  {
+    "name": "sql-injection-search-query",
+    "filePath": "src/db/SearchQuery.ts",
+    "startLine": 1,
+    "endLine": 4,
+    "category": "SECURITY"
+  },
+  {
+    "name": "missing-auth-delete-repository",
+    "filePath": "src/repository/DeleteRepository.ts",
+    "startLine": 1,
+    "endLine": 4,
+    "category": "SECURITY"
+  },
+  {
+    "name": "missing-auth-update-settings",
+    "filePath": "src/settings/UpdateSettings.ts",
+    "startLine": 1,
+    "endLine": 8,
+    "category": "SECURITY"
+  },
+  {
+    "name": "no-rollback-charge-user",
+    "filePath": "src/billing/ChargeUser.ts",
+    "startLine": 1,
+    "endLine": 9,
+    "category": "LOGIC"
+  },
+  {
+    "name": "no-rollback-transfer-ownership",
+    "filePath": "src/repository/TransferOwnership.ts",
+    "startLine": 1,
+    "endLine": 9,
+    "category": "LOGIC"
+  },
+  {
+    "name": "null-handling-diff-parser",
+    "filePath": "src/pr/DiffParser.ts",
+    "startLine": 1,
+    "endLine": 4,
+    "category": "BUG"
+  },
+  {
+    "name": "null-handling-citation-formatter",
+    "filePath": "src/chat/CitationFormatter.ts",
+    "startLine": 1,
+    "endLine": 3,
+    "category": "BUG"
+  },
+  {
+    "name": "race-condition-job-claimer",
+    "filePath": "src/indexing/JobClaimer.ts",
+    "startLine": 1,
+    "endLine": 9,
+    "category": "LOGIC"
+  },
+  {
+    "name": "race-condition-rate-limiter",
+    "filePath": "src/ratelimit/limiter.py",
+    "startLine": 1,
+    "endLine": 6,
+    "category": "LOGIC"
+  },
+  {
+    "name": "missing-tests-risk-scorer",
+    "filePath": "src/pr/RiskScorer.ts",
+    "startLine": 1,
+    "endLine": 8,
+    "category": "TESTING"
+  },
+  {
+    "name": "missing-tests-cost-estimator",
+    "filePath": "src/cost/estimator.py",
+    "startLine": 1,
+    "endLine": 4,
+    "category": "TESTING"
+  }
+]

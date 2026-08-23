@@ -4,6 +4,7 @@ import { vectorSearch } from "../../retrieval/services/vector-search.service.js"
 import { keywordSearch } from "../../retrieval/services/keyword-search.service.js";
 import { mergeRankings } from "../../retrieval/services/rrf-merge.service.js";
 import { embedQuery } from "../../chat/services/llm.service.js";
+import { rerank } from "../../retrieval/services/reranker.service.js";
 import type { EvalConfig, ExpectedChunkIdentity } from "../types/evaluation.types.js";
 import type { Prisma } from "@prisma/client";
 
@@ -16,14 +17,45 @@ async function runConfigSearch(repositoryId: string, questionText: string, confi
     return keywordSearch(repositoryId, questionText, RETRIEVAL_FINAL_K);
   }
 
-  // HYBRID and HYBRID_RERANKED (reranking not built this pass, so
-  // HYBRID_RERANKED currently behaves identically to HYBRID)
   const queryVector = await embedQuery(questionText);
   const [vectorResults, keywordResults] = await Promise.all([
     vectorSearch(repositoryId, queryVector, RETRIEVAL_FINAL_K),
     keywordSearch(repositoryId, questionText, RETRIEVAL_FINAL_K),
   ]);
-  return mergeRankings(vectorResults, keywordResults, { queryType: "semantic" }).slice(0, RETRIEVAL_FINAL_K);
+  const merged = mergeRankings(vectorResults, keywordResults, { queryType: "semantic" }).slice(0, RETRIEVAL_FINAL_K);
+
+  if (config === "HYBRID") {
+    return merged;
+  }
+
+  // HYBRID_RERANKED: rerank() takes RetrievedChunk[] (needs filePath/content),
+  // but merged results here are bare {chunkId, score} rows — fetch the real
+  // chunk rows first, same shape retrieval.service.ts builds before reranking.
+  const chunkIds = merged.map((r) => r.chunkId);
+  const chunkRows = await prisma.chunk.findMany({
+    where: { id: { in: chunkIds } },
+    include: { file: { select: { path: true } } },
+  });
+  const chunkById = new Map(chunkRows.map((c) => [c.id, c]));
+  const candidates = merged
+    .map((r) => chunkById.get(r.chunkId))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined)
+    .map((c) => ({
+      id: c.id,
+      repositoryId: c.repositoryId,
+      fileId: c.fileId,
+      symbol: c.symbol,
+      symbolType: c.symbolType,
+      parentSymbol: c.parentSymbol,
+      language: c.language,
+      startLine: c.startLine,
+      endLine: c.endLine,
+      content: c.content,
+      filePath: c.file.path,
+    }));
+
+  const reranked = await rerank(questionText, candidates);
+  return reranked.map((c) => ({ chunkId: c.id }));
 }
 
 export async function runRetrievalEval(repositoryId: string, config: EvalConfig) {

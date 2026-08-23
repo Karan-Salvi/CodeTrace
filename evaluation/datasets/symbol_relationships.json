@@ -1,0 +1,110 @@
+[
+  {
+    "file": "auth/AuthService.ts",
+    "type": "IMPORTS",
+    "from_symbol": null,
+    "to": "./handleAuthError"
+  },
+  {
+    "file": "auth/AuthService.ts",
+    "type": "CALLS",
+    "from_symbol": "login",
+    "to": "this.exchangeCode"
+  },
+  {
+    "file": "auth/AuthService.ts",
+    "type": "CALLS",
+    "from_symbol": "login",
+    "to": "handleAuthError"
+  },
+  {
+    "file": "repository/RepositoryService.ts",
+    "type": "IMPORTS",
+    "from_symbol": null,
+    "to": "./InstallationService"
+  },
+  {
+    "file": "repository/RepositoryService.ts",
+    "type": "CALLS",
+    "from_symbol": "connectRepository",
+    "to": "getActiveInstallation"
+  },
+  {
+    "file": "hashing/chunk_store.py",
+    "type": "IMPORTS",
+    "from_symbol": null,
+    "to": ".hasher"
+  },
+  {
+    "file": "hashing/chunk_store.py",
+    "type": "CALLS",
+    "from_symbol": "store_chunk",
+    "to": "content_hash"
+  },
+  {
+    "file": "db/UserQuery.ts",
+    "type": "CALLS",
+    "from_symbol": "findUserByEmail",
+    "to": "db.query"
+  },
+  {
+    "file": "db/SearchQuery.ts",
+    "type": "CALLS",
+    "from_symbol": "searchRepositories",
+    "to": "db.query"
+  },
+  {
+    "file": "repository/DeleteRepository.ts",
+    "type": "CALLS",
+    "from_symbol": "deleteRepository",
+    "to": "db.delete"
+  },
+  {
+    "file": "settings/UpdateSettings.ts",
+    "type": "CALLS",
+    "from_symbol": "updateUserSettings",
+    "to": "db.update"
+  },
+  {
+    "file": "billing/ChargeUser.ts",
+    "type": "CALLS",
+    "from_symbol": "chargeAndRecord",
+    "to": "chargeCard"
+  },
+  {
+    "file": "billing/ChargeUser.ts",
+    "type": "CALLS",
+    "from_symbol": "chargeAndRecord",
+    "to": "insertBillingRecord"
+  },
+  {
+    "file": "repository/TransferOwnership.ts",
+    "type": "CALLS",
+    "from_symbol": "transferOwnership",
+    "to": "db.updateOwner"
+  },
+  {
+    "file": "repository/TransferOwnership.ts",
+    "type": "CALLS",
+    "from_symbol": "transferOwnership",
+    "to": "db.revokeAccess"
+  },
+  {
+    "file": "indexing/JobClaimer.ts",
+    "type": "CALLS",
+    "from_symbol": "claimJob",
+    "to": "db.getStatus"
+  },
+  {
+    "file": "indexing/JobClaimer.ts",
+    "type": "CALLS",
+    "from_symbol": "claimJob",
+    "to": "db.setStatus"
+  },
+  {
+    "file": "pr/RiskScorer.ts",
+    "type": "CALLS",
+    "from_symbol": "calculateRiskScore",
+    "to": "Math.min"
+  }
+]

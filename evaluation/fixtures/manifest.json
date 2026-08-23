@@ -1,0 +1,206 @@
+[
+  {
+    "path": "auth/handleAuthError.ts",
+    "language": "typescript",
+    "symbol": "handleAuthError",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 6,
+    "calls": []
+  },
+  {
+    "path": "auth/AuthService.ts",
+    "language": "typescript",
+    "symbol": "login",
+    "symbolType": "METHOD",
+    "parentSymbol": "AuthService",
+    "startLine": 4,
+    "endLine": 10,
+    "calls": [
+      "handleAuthError"
+    ]
+  },
+  {
+    "path": "repository/RepositoryService.ts",
+    "language": "typescript",
+    "symbol": "connectRepository",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 3,
+    "endLine": 6,
+    "calls": [
+      "getActiveInstallation"
+    ]
+  },
+  {
+    "path": "repository/InstallationService.ts",
+    "language": "typescript",
+    "symbol": "getActiveInstallation",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": []
+  },
+  {
+    "path": "hashing/hasher.py",
+    "language": "python",
+    "symbol": "content_hash",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 4,
+    "endLine": 5,
+    "calls": []
+  },
+  {
+    "path": "hashing/chunk_store.py",
+    "language": "python",
+    "symbol": "store_chunk",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 4,
+    "endLine": 5,
+    "calls": [
+      "content_hash"
+    ]
+  },
+  {
+    "path": "db/UserQuery.ts",
+    "language": "typescript",
+    "symbol": "findUserByEmail",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": [],
+    "bugCategory": "SECURITY"
+  },
+  {
+    "path": "db/SearchQuery.ts",
+    "language": "typescript",
+    "symbol": "searchRepositories",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 4,
+    "calls": [],
+    "bugCategory": "SECURITY"
+  },
+  {
+    "path": "repository/DeleteRepository.ts",
+    "language": "typescript",
+    "symbol": "deleteRepository",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 4,
+    "calls": [],
+    "bugCategory": "SECURITY"
+  },
+  {
+    "path": "settings/UpdateSettings.ts",
+    "language": "typescript",
+    "symbol": "updateUserSettings",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 8,
+    "calls": [],
+    "bugCategory": "SECURITY"
+  },
+  {
+    "path": "billing/ChargeUser.ts",
+    "language": "typescript",
+    "symbol": "chargeAndRecord",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 9,
+    "calls": [
+      "chargeCard",
+      "insertBillingRecord"
+    ],
+    "bugCategory": "LOGIC"
+  },
+  {
+    "path": "repository/TransferOwnership.ts",
+    "language": "typescript",
+    "symbol": "transferOwnership",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 9,
+    "calls": [
+      "updateOwner",
+      "revokeAccess"
+    ],
+    "bugCategory": "LOGIC"
+  },
+  {
+    "path": "pr/DiffParser.ts",
+    "language": "typescript",
+    "symbol": "parseDiffHeader",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 4,
+    "calls": [],
+    "bugCategory": "BUG"
+  },
+  {
+    "path": "chat/CitationFormatter.ts",
+    "language": "typescript",
+    "symbol": "formatCitation",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": [],
+    "bugCategory": "BUG"
+  },
+  {
+    "path": "indexing/JobClaimer.ts",
+    "language": "typescript",
+    "symbol": "claimJob",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 9,
+    "calls": [],
+    "bugCategory": "LOGIC"
+  },
+  {
+    "path": "ratelimit/limiter.py",
+    "language": "python",
+    "symbol": "check_and_increment",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 6,
+    "calls": [],
+    "bugCategory": "LOGIC"
+  },
+  {
+    "path": "pr/RiskScorer.ts",
+    "language": "typescript",
+    "symbol": "calculateRiskScore",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 8,
+    "calls": [],
+    "bugCategory": "TESTING"
+  },
+  {
+    "path": "cost/estimator.py",
+    "language": "python",
+    "symbol": "estimate_cost",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 4,
+    "calls": [],
+    "bugCategory": "TESTING"
+  }
+]
