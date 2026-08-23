@@ -80,6 +80,39 @@ describe("aggregateFileGraph", () => {
     expect(result.nodes).toHaveLength(0);
     expect(result.edges).toHaveLength(0);
   });
+
+  it("merges two File rows for the same path in different separator styles into one node", () => {
+    // Regression: a Windows-run incremental index left duplicate File rows
+    // for the same real file, one with `/` paths and one with `\` paths —
+    // these must render as one graph node, not two disconnected ones.
+    const duplicateChunks: FileChunkRow[] = [
+      { fileId: "file-a-forward", filePath: "src/a.ts", chunkId: "chunk-fwd", symbol: "fnA" },
+      { fileId: "file-a-back", filePath: "src\\a.ts", chunkId: "chunk-back", symbol: "fnA" },
+      { fileId: "file-b", filePath: "src/b.ts", chunkId: "chunk-b1", symbol: "fnB1" },
+    ];
+    const relationships: FileRelationshipRow[] = [
+      { relationshipType: "CALLS", fromChunkId: "chunk-back", fromFileId: "file-a-back", fromFilePath: "src\\a.ts", toChunkId: "chunk-b1", toFileId: "file-b", toFilePath: "src/b.ts" },
+    ];
+    const result = aggregateFileGraph(relationships, duplicateChunks);
+    const aNodes = result.nodes.filter((n) => n.path === "src/a.ts");
+    expect(aNodes).toHaveLength(1);
+    expect(aNodes[0]!.symbolCount).toBe(2);
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0]!.source).toBe(aNodes[0]!.id);
+  });
+
+  it("excludes an edge between two duplicate-path rows of the same file (cross-variant self-reference)", () => {
+    const duplicateChunks: FileChunkRow[] = [
+      { fileId: "file-a-forward", filePath: "src/a.ts", chunkId: "chunk-fwd", symbol: "fnA" },
+      { fileId: "file-a-back", filePath: "src\\a.ts", chunkId: "chunk-back", symbol: "fnA2" },
+    ];
+    const relationships: FileRelationshipRow[] = [
+      { relationshipType: "CALLS", fromChunkId: "chunk-fwd", fromFileId: "file-a-forward", fromFilePath: "src/a.ts", toChunkId: "chunk-back", toFileId: "file-a-back", toFilePath: "src\\a.ts" },
+    ];
+    const result = aggregateFileGraph(relationships, duplicateChunks);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.edges).toHaveLength(0);
+  });
 });
 
 describe("buildSymbolGraph", () => {

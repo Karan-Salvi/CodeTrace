@@ -23,6 +23,20 @@ function emptyCounts(): Record<RelationshipTypeName, number> {
   return { CALLS: 0, IMPORTS: 0, EXTENDS: 0, IMPLEMENTS: 0 };
 }
 
+// Windows-run incremental indexing has historically left duplicate `File`
+// rows for the same real file — one path using `/`, one using `\` (a
+// path-separator bug in how the worker computed relative paths on that
+// OS). Two different `fileId`s that normalize to the same forward-slash
+// path are the same file and must render as one graph node, not two —
+// otherwise every affected repo shows visibly duplicated, disconnected
+// nodes. This is a display-layer merge, not a fix to the underlying rows
+// (a real fix belongs in the worker + a data migration, out of scope
+// here) — see docs/superpowers/specs/2026-08-23-architecture-view-design.md's
+// "Known gap" section precedent for this kind of documented workaround.
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
 export function aggregateFileGraph(relationships: FileRelationshipRow[], chunks: FileChunkRow[]) {
   // Per-chunk relationship count, used only to rank topSymbols — counts a
   // chunk appearing on either side of a relationship (as caller or callee).
@@ -34,21 +48,35 @@ export function aggregateFileGraph(relationships: FileRelationshipRow[], chunks:
     }
   }
 
-  const chunksByFile = new Map<string, FileChunkRow[]>();
+  // Group chunks by normalized path (not raw fileId) so duplicate File
+  // rows for the same real file merge into one node. The canonical node
+  // id is the lexicographically-smallest fileId in the group — arbitrary
+  // but deterministic, so the same file always resolves to the same node
+  // id across requests.
+  const chunksByPath = new Map<string, FileChunkRow[]>();
   for (const chunk of chunks) {
-    const list = chunksByFile.get(chunk.fileId) ?? [];
+    const key = normalizePath(chunk.filePath);
+    const list = chunksByPath.get(key) ?? [];
     list.push(chunk);
-    chunksByFile.set(chunk.fileId, list);
+    chunksByPath.set(key, list);
   }
 
-  const nodes = Array.from(chunksByFile.entries()).map(([fileId, fileChunks]) => {
+  const canonicalFileIdByRawFileId = new Map<string, string>();
+  for (const fileChunks of chunksByPath.values()) {
+    const canonicalId = fileChunks.map((c) => c.fileId).sort()[0]!;
+    for (const chunk of fileChunks) {
+      canonicalFileIdByRawFileId.set(chunk.fileId, canonicalId);
+    }
+  }
+
+  const nodes = Array.from(chunksByPath.entries()).map(([normalizedPath, fileChunks]) => {
     const sorted = [...fileChunks].sort((a, b) => {
       const countDiff = (relationshipCountByChunk.get(b.chunkId) ?? 0) - (relationshipCountByChunk.get(a.chunkId) ?? 0);
       return countDiff !== 0 ? countDiff : a.symbol.localeCompare(b.symbol);
     });
     return {
-      id: fileId,
-      path: fileChunks[0]!.filePath,
+      id: canonicalFileIdByRawFileId.get(fileChunks[0]!.fileId)!,
+      path: normalizedPath,
       symbolCount: fileChunks.length,
       topSymbols: sorted.slice(0, 5).map((c) => ({ chunkId: c.chunkId, symbol: c.symbol })),
     };
@@ -57,9 +85,11 @@ export function aggregateFileGraph(relationships: FileRelationshipRow[], chunks:
   const edgeByFilePair = new Map<string, { source: string; target: string; counts: Record<RelationshipTypeName, number> }>();
   for (const rel of relationships) {
     if (!rel.toFileId) continue; // external target — no file to draw an edge to
-    if (rel.fromFileId === rel.toFileId) continue; // self-referential — not useful at file granularity
-    const key = `${rel.fromFileId}->${rel.toFileId}`;
-    const edge = edgeByFilePair.get(key) ?? { source: rel.fromFileId, target: rel.toFileId, counts: emptyCounts() };
+    const fromId = canonicalFileIdByRawFileId.get(rel.fromFileId) ?? rel.fromFileId;
+    const toId = canonicalFileIdByRawFileId.get(rel.toFileId) ?? rel.toFileId;
+    if (fromId === toId) continue; // self-referential (including across duplicate rows of the same file) — not useful at file granularity
+    const key = `${fromId}->${toId}`;
+    const edge = edgeByFilePair.get(key) ?? { source: fromId, target: toId, counts: emptyCounts() };
     edge.counts[rel.relationshipType] += 1;
     edgeByFilePair.set(key, edge);
   }
@@ -92,7 +122,7 @@ export interface IncomingEdgeRow {
 }
 
 function chunkRefToNode(ref: SymbolChunkRef) {
-  return { id: ref.id, symbol: ref.symbol, symbolType: ref.symbolType, file: ref.filePath, startLine: ref.startLine, external: false };
+  return { id: ref.id, symbol: ref.symbol, symbolType: ref.symbolType, file: normalizePath(ref.filePath), startLine: ref.startLine, external: false };
 }
 
 export function buildSymbolGraph(root: SymbolChunkRef, outgoing: OutgoingEdgeRow[], incoming: IncomingEdgeRow[]) {
