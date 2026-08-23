@@ -14,6 +14,7 @@ import {
   getPullRequestDiff,
   getChunkContent,
 } from "../controllers/repositories.controller.js";
+import { getRepositoryGraph } from "../controllers/graph.controller.js";
 import { getInstallationToken } from "../controllers/internal.controller.js";
 
 export const repositoriesRoutes = Router();
@@ -35,6 +36,7 @@ repositoriesRoutes.get(
   requireAuth,
   asyncHandler(getPullRequestDiff)
 );
+repositoriesRoutes.get("/repositories/:id/graph", requireAuth, asyncHandler(getRepositoryGraph));
 repositoriesRoutes.get(
   "/repositories/:id/chunks/:chunkId",
   requireAuth,
