@@ -60,6 +60,24 @@ describe("keywordSearch", () => {
     expect(topChunk?.symbol).toBe("connectRepository");
   });
 
+  it("matches a natural-language question against a keyword it shares with the content, instead of requiring every word (including stopwords) to match", async () => {
+    // Regression: plainto_tsquery ANDs every token by default, and the
+    // 'simple' text-search config (deliberately used here, database.md,
+    // since code identifiers aren't English words) does not strip
+    // stopwords the way 'english' would. A natural question like this one
+    // contains "how"/"are", which never appear in code content — an
+    // AND-of-every-token query guarantees zero rows regardless of how
+    // relevant the content actually is. Real users type natural
+    // questions, not bare identifiers, so this made keyword search (and
+    // therefore its contribution to hybrid RRF) silently useless for any
+    // query that wasn't already a literal code identifier.
+    const results = await keywordSearch(repositoryId, "How are token expiry authentication errors handled?", 5);
+    expect(results.length).toBeGreaterThan(0);
+
+    const topChunk = await prisma.chunk.findUnique({ where: { id: results[0].chunkId } });
+    expect(topChunk?.symbol).toBe("handleAuthError");
+  });
+
   it("returns no results scoped outside the repository", async () => {
     const results = await keywordSearch("00000000-0000-0000-0000-000000000000", "handleAuthError", 5);
     expect(results).toHaveLength(0);
