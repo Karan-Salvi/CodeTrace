@@ -268,7 +268,7 @@ export function RepositoryChat() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto mb-md space-y-lg pr-sm">
+      <div className="flex-1 overflow-y-auto scrollbar-hide mb-md space-y-lg pr-sm">
         {messages.length === 0 && !isThinking && (
           <div className="flex h-full flex-col items-center justify-center gap-md text-center">
             <p className="text-mute text-[14px]">Ask a question about this codebase to get started.</p>

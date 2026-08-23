@@ -81,6 +81,21 @@
   }
 }
 
+@layer utilities {
+  /* Referenced across the dashboard (DashboardSidebar's nav, chat's
+     message list) for scrollable panels that should still scroll via
+     wheel/trackpad/keyboard but not show a visible track — Tailwind v4
+     core has no scrollbar-hide utility, so this backs the class name
+     that was already in use without ever being defined. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   body {
     background-color: var(--color-canvas-soft);
