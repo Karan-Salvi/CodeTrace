@@ -10,6 +10,7 @@ from src.config import get_settings
 from src.db import get_engine
 from src.embedding.batcher import embed_and_store_batch
 from src.embedding.embedder import embed_batch  # noqa: F401
+from src.embedding.pricing import estimate_embedding_cost_usd
 from src.github.clone import clone_repository
 from src.github.token_client import fetch_installation_token
 from src.indexing.secret_filter import should_exclude
@@ -180,6 +181,16 @@ async def run_full_index(repository_id: str, job_id: str) -> None:
         cache_hits = sum(1 for hit in cache_results.values() if hit)
         embeddings_generated = len(cache_results) - cache_hits
 
+        hash_to_content: dict[str, str] = {
+            str(row["content_hash"]): str(row["content"]) for row in all_chunk_rows
+        }
+        newly_embedded_chars = sum(
+            len(hash_to_content[content_hash])
+            for content_hash, is_cache_hit in cache_results.items()
+            if not is_cache_hit
+        )
+        embedding_cost_usd = estimate_embedding_cost_usd(newly_embedded_chars)
+
         async with engine.begin() as conn:
             await conn.execute(
                 text("UPDATE repositories SET status = 'STORING' WHERE id = :id"),
@@ -271,9 +282,9 @@ async def run_full_index(repository_id: str, job_id: str) -> None:
             await conn.execute(
                 text(
                     "UPDATE repositories SET status = 'INDEXED', current_commit_sha = :sha, "
-                    "chunks_indexed = :n WHERE id = :id"
+                    "chunks_indexed = :n, embedding_cost_usd = :cost WHERE id = :id"
                 ),
-                {"sha": commit_sha, "n": chunks_created, "id": repository_id},
+                {"sha": commit_sha, "n": chunks_created, "cost": embedding_cost_usd, "id": repository_id},
             )
 
         duration_ms = int((time.monotonic() - start) * 1000)
@@ -288,7 +299,7 @@ async def run_full_index(repository_id: str, job_id: str) -> None:
             chunks_created=chunks_created,
             embeddings_generated=embeddings_generated,
             cache_hit_rate=cache_hit_rate,
-            cost_usd=0.0,  # KNOWN GAP: see "What's deliberately deferred" below
+            cost_usd=embedding_cost_usd,
         )
 
         logger.info(f"full index complete: {files_processed} files, {chunks_created} chunks")

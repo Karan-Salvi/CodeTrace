@@ -69,7 +69,8 @@ async def test_full_index_creates_chunks_and_skips_secret_files(tmp_path: Path) 
     with (
         patch("src.indexing.full_index.fetch_installation_token", new_callable=AsyncMock, return_value="unused"),
         patch("src.indexing.full_index.clone_repository", new_callable=AsyncMock, return_value=(local_repo_path, "abc123")),
-        patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536])
+        patch("src.embedding.batcher.embed_batch", new_callable=AsyncMock, return_value=[[0.1] * 1536]),
+        patch("src.indexing.full_index.estimate_embedding_cost_usd", return_value=0.05)
     ):
 
         await run_full_index(repository_id, job_id="job-full-1")
@@ -88,6 +89,22 @@ async def test_full_index_creates_chunks_and_skips_secret_files(tmp_path: Path) 
     assert "handleAuthError" in symbols
     assert repo_row[0] == "INDEXED"
     assert repo_row[2] >= 1
+
+    async with engine.connect() as conn:
+        cost_row = (await conn.execute(
+            text("SELECT embedding_cost_usd FROM repositories WHERE id = :rid"),
+            {"rid": repository_id},
+        )).first()
+        usage_log_row = (await conn.execute(
+            text("SELECT cost_usd FROM usage_logs WHERE repository_id = :rid AND kind = 'INDEXING'"),
+            {"rid": repository_id},
+        )).first()
+
+    assert cost_row is not None
+    assert float(cost_row[0]) > 0
+    assert usage_log_row is not None
+    assert float(usage_log_row[0]) > 0
+    assert float(cost_row[0]) == pytest.approx(float(usage_log_row[0]))
 
     # .env content must never appear as chunk content anywhere
     async with engine.connect() as conn:
