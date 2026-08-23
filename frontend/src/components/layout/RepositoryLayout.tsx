@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
-import { Outlet, Link, useLocation, useParams, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, GitPullRequest, Network, ChevronLeft } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { Outlet, Link, useParams, useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 import { apiFetch } from "../../lib/api-client";
 import { wsClient } from "../../lib/websocket";
 import type { ProgressMessage, WsErrorMessage } from "../../lib/websocket";
 import type { Repository } from "../../types";
 import { Badge } from "../ui/badge";
 
-const TABS = [
-  { label: "Overview", icon: LayoutDashboard, suffix: "" },
-  { label: "Chat", icon: MessageSquare, suffix: "/chat" },
-  { label: "Pull Requests", icon: GitPullRequest, suffix: "/pull-requests" },
-  { label: "Architecture", icon: Network, suffix: "/architecture" },
-];
+// The Overview/Chat/Pull Requests/Architecture tab list used to live here
+// as a local <aside> — it's now rendered by DashboardSidebar as an
+// expandable group under "Repositories" in the main nav instead, so this
+// layout only owns the shared repository data/header, not sub-navigation.
 
 const STATUS_LABEL: Record<Repository["status"], string> = {
   PENDING: "Queued",
@@ -37,7 +34,6 @@ export interface RepositoryContext {
 
 export function RepositoryLayout() {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const [repository, setRepository] = useState<Repository | null>(null);
 
@@ -113,31 +109,9 @@ export function RepositoryLayout() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row w-full gap-lg flex-1 min-h-0">
-        <aside className="w-full md:w-56 shrink-0 flex flex-row md:flex-col gap-xs overflow-x-auto md:overflow-visible md:pr-lg md:border-r md:border-hairline">
-          {TABS.map((tab) => {
-            const path = `/repositories/${id}${tab.suffix}`;
-            const active = location.pathname === path;
-            const Icon = tab.icon;
-            return (
-              <Link
-                key={tab.label}
-                to={path}
-                className={cn(
-                  "flex items-center gap-xs rounded-sm px-sm py-xs text-[14px] font-medium transition-colors shrink-0 whitespace-nowrap",
-                  active ? "bg-canvas-soft text-ink" : "text-mute hover:text-ink hover:bg-canvas-soft/50"
-                )}
-              >
-                <Icon className={cn("w-4 h-4", active ? "text-ink" : "text-mute")} />
-                {tab.label}
-              </Link>
-            );
-          })}
-        </aside>
-        <main className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <Outlet context={context} />
-        </main>
-      </div>
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col">
+        <Outlet context={context} />
+      </main>
     </div>
   );
 }

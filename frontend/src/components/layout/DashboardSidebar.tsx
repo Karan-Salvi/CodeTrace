@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { FolderGit2, Settings, LogOut, User } from "lucide-react";
+import { FolderGit2, Settings, LogOut, User, LayoutDashboard, MessageSquare, GitPullRequest, Network } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "../../lib/AuthContext";
 import { cn } from "../../lib/utils";
@@ -20,6 +20,28 @@ import {
 // design they were adapted from had them.
 const navItems = [{ name: "Repositories", icon: FolderGit2, path: "/repositories" }];
 
+// Formerly RepositoryLayout's own local tab list — moved here so a repo's
+// sub-pages show as an expandable group under "Repositories" in the main
+// nav (matching the app's own sidebar-driven-navigation pattern) instead
+// of a second, separate tab strip living in the page content area.
+const REPO_TABS = [
+  { label: "Overview", icon: LayoutDashboard, suffix: "" },
+  { label: "Chat", icon: MessageSquare, suffix: "/chat" },
+  { label: "Pull Requests", icon: GitPullRequest, suffix: "/pull-requests" },
+  { label: "Architecture", icon: Network, suffix: "/architecture" },
+];
+
+// Matches "/repositories/:id" (and deeper), but not the literal
+// "/repositories" list page or "/repositories/new" (a real page, not an
+// id) — pathname-based rather than useParams() because this component
+// renders in AppShell, one level above where the :id route param is
+// actually matched, so useParams() here would not see it.
+function repoIdFromPathname(pathname: string): string | null {
+  const match = pathname.match(/^\/repositories\/([^/]+)/);
+  if (!match) return null;
+  return match[1] === "new" ? null : match[1];
+}
+
 interface DashboardSidebarProps {
   // Set only by the mobile drawer (AppShell) so a nav/account click closes
   // the overlay — the always-visible desktop sidebar has no "close" concept.
@@ -30,6 +52,7 @@ export function DashboardSidebar({ onNavigate }: DashboardSidebarProps = {}) {
   const { pathname } = useLocation();
   const { logout } = useAuth();
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const repoId = repoIdFromPathname(pathname);
 
   useEffect(() => {
     let mounted = true;
@@ -76,6 +99,30 @@ export function DashboardSidebar({ onNavigate }: DashboardSidebarProps = {}) {
               </Link>
             );
           })}
+
+          {repoId && (
+            <div className="ml-2 pl-2.5 border-l border-hairline flex flex-col gap-0.5 mt-0.5">
+              {REPO_TABS.map((tab) => {
+                const path = `/repositories/${repoId}${tab.suffix}`;
+                const active = pathname === path;
+                const Icon = tab.icon;
+                return (
+                  <Link
+                    key={tab.label}
+                    to={path}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-[13px] font-medium group cursor-pointer",
+                      active ? "bg-canvas-soft text-ink" : "text-mute hover:text-ink hover:bg-canvas-soft/50"
+                    )}
+                  >
+                    <Icon className={cn("w-3.5 h-3.5", active ? "text-ink" : "text-mute group-hover:text-ink")} />
+                    <span>{tab.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
