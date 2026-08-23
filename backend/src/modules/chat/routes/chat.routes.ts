@@ -4,6 +4,7 @@ import { createRateLimiter } from "../../../core/middlewares/rate-limit.middlewa
 import { asyncHandler } from "../../../core/utils/async-handler.js";
 import {
   postConversation,
+  getLatestConversation,
   getMessages,
 } from "../controllers/chat.controller.js";
 
@@ -23,6 +24,11 @@ chatRoutes.post(
   requireAuth,
   chatRateLimiter,
   asyncHandler(postConversation),
+);
+chatRoutes.get(
+  "/repositories/:id/conversations/latest",
+  requireAuth,
+  asyncHandler(getLatestConversation),
 );
 chatRoutes.get(
   "/repositories/:id/conversations/:conversationId/messages",

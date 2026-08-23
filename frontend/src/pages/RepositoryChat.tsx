@@ -113,12 +113,16 @@ export function RepositoryChat() {
     let cancelled = false;
 
     async function init() {
-      // No conversation-list/pick UI in this MVP (out of scope per the
-      // plan) — start a fresh conversation each time this page loads.
-      const conv = await apiFetch<Conversation>(`/repositories/${id}/conversations`, {
-        method: "POST",
-        data: {},
-      });
+      // Still no conversation-list/pick UI in this MVP (out of scope per
+      // the plan) — but resume the most recent conversation instead of
+      // always POSTing a fresh one, so a page reload doesn't discard a
+      // thread that's already fully persisted server-side (chat.service.ts
+      // writes every question/answer regardless of whether the frontend
+      // is still around to show it).
+      const latest = await apiFetch<Conversation | null>(`/repositories/${id}/conversations/latest`);
+      if (cancelled) return;
+      const conv =
+        latest ?? (await apiFetch<Conversation>(`/repositories/${id}/conversations`, { method: "POST", data: {} }));
       if (cancelled) return;
       setConversation(conv);
       const existing = await apiFetch<Message[]>(`/repositories/${id}/conversations/${conv.id}/messages`);
