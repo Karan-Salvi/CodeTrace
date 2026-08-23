@@ -7,10 +7,9 @@ import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
 import type { ChatCompleteMessage, WsErrorMessage } from "../lib/websocket";
 import type { Conversation, Message, Citation, ChunkContent } from "../types";
-import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
-import { Plus } from "lucide-react";
+import { Plus, ArrowUp } from "lucide-react";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
 
@@ -101,6 +100,17 @@ export function RepositoryChat() {
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow with content, capped by the textarea's own max-h-[160px] —
+  // reset to "auto" first so shrinking (e.g. after clearing on send) isn't
+  // stuck at the previous, taller scrollHeight.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   // One citation viewer at a time, shown in a panel above the input box
   // rather than expanded inline within the running answer text — a
@@ -350,22 +360,33 @@ export function RepositoryChat() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="relative flex-shrink-0 border-t border-hairline pt-md">
-        <Input
+      <form
+        onSubmit={handleSubmit}
+        className="flex-shrink-0 flex items-end gap-xs bg-canvas border border-hairline rounded-[24px] p-xs pl-md focus-within:border-hairline-strong transition-colors"
+      >
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendQuestion(input);
+            }
+          }}
           placeholder="Ask a question about the repository..."
-          variant="lg"
-          className="pr-[80px]"
+          rows={1}
           disabled={!conversation}
+          className="flex-1 min-w-0 max-h-[160px] resize-none bg-transparent text-[15px] text-ink placeholder:text-mute py-sm focus:outline-none disabled:cursor-not-allowed"
         />
         <Button
           type="submit"
-          variant="primary-sm"
-          className="absolute right-2 top-[24px] px-md"
+          variant="icon-circular"
+          className="mb-xxs shrink-0 bg-primary text-on-primary border-none disabled:opacity-40"
           disabled={!input.trim() || !conversation}
+          aria-label="Send"
         >
-          Send
+          <ArrowUp className="w-4 h-4" />
         </Button>
       </form>
     </div>
