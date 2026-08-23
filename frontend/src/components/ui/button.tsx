@@ -4,7 +4,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "../../lib/utils";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "primary-sm" | "secondary-sm" | "icon-circular" | "ghost";
+  variant?: "primary" | "secondary" | "primary-sm" | "secondary-sm" | "icon-circular" | "ghost" | "danger" | "danger-sm";
   // Renders as the single child element (e.g. a react-router <Link>)
   // with this button's props/classes merged onto it, instead of
   // wrapping it in a literal <button> — DashboardTopbar.tsx's
@@ -30,6 +30,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             "bg-canvas text-ink text-[14px] font-medium leading-[20px] rounded-pill px-[8px] h-[32px] border border-hairline": variant === "secondary-sm",
             "bg-canvas text-ink border border-hairline rounded-full w-[32px] h-[32px]": variant === "icon-circular",
             "text-body hover:text-ink text-[14px] font-medium leading-[20px] rounded-full px-[8px] h-[32px] hover:bg-canvas-soft": variant === "ghost",
+            "bg-error text-white hover:bg-error/90 text-[16px] font-medium leading-[24px] rounded-pill px-[16px] h-[48px]": variant === "danger",
+            "bg-error text-white hover:bg-error/90 text-[14px] font-medium leading-[20px] rounded-pill px-[12px] h-[32px]": variant === "danger-sm",
           },
           className
         )}

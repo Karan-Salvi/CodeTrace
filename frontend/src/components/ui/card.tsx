@@ -50,3 +50,19 @@ export const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
   )
 );
 CardContent.displayName = "CardContent";
+
+// A secondary, visually-distinct footer strip within a Card — for a
+// helper note, an inline action bar, or both together (Settings.tsx's
+// "32 characters max" + Save button pattern). Not a plain CardContent:
+// the softer background and top border are what separate it from the
+// card's main body.
+export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("bg-canvas-soft border-t border-hairline px-lg md:px-xl py-md", className)}
+      {...props}
+    />
+  )
+);
+CardFooter.displayName = "CardFooter";
