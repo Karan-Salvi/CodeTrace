@@ -1,16 +1,22 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Outlet, Link, useParams, useNavigate } from "react-router-dom";
+import { Outlet, Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { apiFetch } from "../../lib/api-client";
 import { wsClient } from "../../lib/websocket";
 import type { ProgressMessage, WsErrorMessage } from "../../lib/websocket";
 import type { Repository } from "../../types";
 import { Badge } from "../ui/badge";
+import { REPO_TABS } from "./DashboardSidebar";
+import { cn } from "../../lib/utils";
 
-// The Overview/Chat/Pull Requests/Architecture tab list used to live here
-// as a local <aside> — it's now rendered by DashboardSidebar as an
-// expandable group under "Repositories" in the main nav instead, so this
-// layout only owns the shared repository data/header, not sub-navigation.
+// The Overview/Chat/Pull Requests/Architecture tab list lives in
+// DashboardSidebar for desktop (always visible) and the mobile drawer —
+// but below md the sidebar is display:none and the drawer is closed by
+// default, so a mobile user had zero visible hint these pages existed
+// unless they happened to tap the hamburger. This layout re-renders the
+// same REPO_TABS as a persistent horizontal strip, `md:hidden`, so the
+// sub-navigation is always visible on mobile without an extra tap —
+// desktop is untouched, this never renders there.
 
 const STATUS_LABEL: Record<Repository["status"], string> = {
   PENDING: "Queued",
@@ -40,6 +46,7 @@ export interface RepositoryContext {
 export function RepositoryLayout() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [repository, setRepository] = useState<Repository | null>(null);
   const [headerAction, setHeaderAction] = useState<ReactNode>(null);
 
@@ -117,6 +124,31 @@ export function RepositoryLayout() {
           {headerAction && <div className="shrink-0 flex justify-end">{headerAction}</div>}
         </div>
       </div>
+
+      {id && (
+        <div className="md:hidden flex items-center gap-xs overflow-x-auto shrink-0 -mx-1 px-1 pb-xxs">
+          {REPO_TABS.map((tab) => {
+            const path = `/repositories/${id}${tab.suffix}`;
+            const active = location.pathname === path;
+            const Icon = tab.icon;
+            return (
+              <Link
+                key={tab.label}
+                to={path}
+                className={cn(
+                  "flex items-center gap-xs px-sm py-xs rounded-full text-[13px] font-medium transition-colors shrink-0 whitespace-nowrap border",
+                  active
+                    ? "bg-canvas-soft text-ink border-hairline-strong"
+                    : "text-mute border-hairline hover:text-ink hover:border-hairline-strong"
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <main className="flex-1 min-w-0 min-h-0 flex flex-col">
         <Outlet context={context} />

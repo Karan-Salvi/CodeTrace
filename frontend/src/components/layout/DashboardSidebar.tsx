@@ -24,7 +24,12 @@ const navItems = [{ name: "Repositories", icon: FolderGit2, path: "/repositories
 // sub-pages show as an expandable group under "Repositories" in the main
 // nav (matching the app's own sidebar-driven-navigation pattern) instead
 // of a second, separate tab strip living in the page content area.
-const REPO_TABS = [
+// Exported: RepositoryLayout.tsx reuses this exact list for a mobile-only
+// inline tab strip — below md, this sidebar is only reachable by opening
+// the drawer, which hid repo sub-navigation behind a tap with zero visual
+// hint it existed. A persistent inline strip fixes that without touching
+// the desktop layout at all.
+export const REPO_TABS = [
   { label: "Overview", icon: LayoutDashboard, suffix: "" },
   { label: "Chat", icon: MessageSquare, suffix: "/chat" },
   { label: "Pull Requests", icon: GitPullRequest, suffix: "/pull-requests" },
