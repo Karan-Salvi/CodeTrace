@@ -1,3 +1,14 @@
+// CodeTrace database schema.
+// Design source: docs/superpowers/specs/2026-08-13-database-schema-design.md
+// Narrative: docs/database.md
+//
+// Raw-SQL supplements live in a hand-edited migration
+// (backend/prisma/sql/indexes.sql): the HNSW vector index (pgvector's
+// `vector` type is Unsupported() in Prisma, no index DSL for it), and the
+// FTS GIN index (a computed to_tsvector() expression over concatenated
+// columns — Prisma's @@index(type: Gin) only covers a real column, not an
+// expression). See "Raw-SQL migration supplements" in the spec.
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -5,6 +16,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
+  // url lives in backend/prisma.config.ts (Prisma 7) — reads env("DATABASE_URL")
   extensions = [vector]
 }
 
