@@ -91,7 +91,7 @@ export function Settings() {
         {/* Avatar */}
         <motion.div variants={itemVariants} className="bg-canvas border border-hairline rounded-lg overflow-hidden">
           <div className="p-lg md:p-xl flex items-start justify-between gap-lg">
-            <div className="max-w-xl">
+            <div className="max-w-[480px]">
               <h2 className="text-[16px] font-semibold text-ink mb-xs">Avatar</h2>
               <p className="text-[14px] text-mute leading-relaxed">
                 Your avatar is synced from your GitHub account.
@@ -161,7 +161,7 @@ export function Settings() {
         <motion.div variants={itemVariants} className="bg-canvas border border-error/40 rounded-lg overflow-hidden mt-3xl!">
           <div className="p-lg md:p-xl">
             <h2 className="text-[16px] font-semibold text-ink mb-xs">Delete Account</h2>
-            <p className="text-[14px] text-mute max-w-xl leading-relaxed">
+            <p className="text-[14px] text-mute max-w-[480px] leading-relaxed">
               Permanently remove your account and all of its contents from the CodeTrace platform. This action is
               not reversible, so please continue with caution.
             </p>

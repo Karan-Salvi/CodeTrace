@@ -181,7 +181,7 @@ export function RepositoryImport() {
           {/* Search & Actions Bar */}
           <div className="p-5 md:p-8 border-b border-hairline flex flex-col gap-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-              <div className="relative flex-1 w-full max-w-2xl">
+              <div className="relative flex-1 w-full max-w-[672px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-mute pointer-events-none" />
                 <Input
                   ref={searchInputRef}
