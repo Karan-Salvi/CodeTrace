@@ -7,8 +7,16 @@ import type { Conversation, Message, Citation, ChunkContent } from "../types";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
+import { Plus } from "lucide-react";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
+
+const EXAMPLE_QUESTIONS = [
+  "What does this repository do?",
+  "Where is the main entry point?",
+  "How is authentication handled?",
+  "What are the biggest files or modules?",
+];
 
 // Splits an answer's text on the backend's own citation-marker format
 // ([path/to/file.ts:10-25], chat.service.ts's CITATION_PATTERN) and
@@ -177,9 +185,8 @@ export function RepositoryChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !id || !conversation) return;
+  const sendQuestion = (question: string) => {
+    if (!question.trim() || !id || !conversation) return;
 
     setError("");
     setMessages((prev) => [
@@ -188,22 +195,56 @@ export function RepositoryChat() {
         id: `user-${Date.now()}`,
         conversationId: conversation.id,
         role: "USER",
-        content: input,
+        content: question,
         citations: [],
         createdAt: new Date().toISOString(),
       },
     ]);
     setIsThinking(true);
-    wsClient.sendChatMessage(id, conversation.id, input);
+    wsClient.sendChatMessage(id, conversation.id, question);
     setInput("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendQuestion(input);
+  };
+
+  const handleNewChat = async () => {
+    if (!id) return;
+    setError("");
+    setMessages([]);
+    setActiveCitation(null);
+    const conv = await apiFetch<Conversation>(`/repositories/${id}/conversations`, { method: "POST", data: {} });
+    setConversation(conv);
   };
 
   return (
     <div className="flex flex-col h-full min-h-[500px]">
+      <div className="flex items-center justify-end mb-sm shrink-0">
+        <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
+          <Plus className="w-3.5 h-3.5" />
+          New chat
+        </Button>
+      </div>
+
       <div className="flex-1 overflow-y-auto mb-md space-y-lg pr-sm">
         {messages.length === 0 && !isThinking && (
-          <div className="flex h-full items-center justify-center text-mute text-[14px]">
-            Start a conversation about your codebase.
+          <div className="flex h-full flex-col items-center justify-center gap-md text-center">
+            <p className="text-mute text-[14px]">Ask a question about this codebase to get started.</p>
+            <div className="flex flex-wrap justify-center gap-xs max-w-[520px]">
+              {EXAMPLE_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => sendQuestion(q)}
+                  disabled={!conversation}
+                  className="text-[13px] text-body px-sm py-xs rounded-full border border-hairline hover:border-hairline-strong hover:text-ink transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg) => (

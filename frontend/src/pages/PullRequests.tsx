@@ -68,59 +68,59 @@ export function PullRequests() {
   if (loading) {
     return (
       <div className="flex h-[200px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-mute" />
+        <Loader2 className="w-8 h-8 animate-spin text-mute" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-[200px] flex-col items-center justify-center gap-2">
-        <AlertTriangle className="h-8 w-8 text-error" />
-        <p className="text-sm text-error-deep">{error}</p>
+      <div className="flex h-[200px] flex-col items-center justify-center gap-sm">
+        <AlertTriangle className="w-8 h-8 text-error" />
+        <p className="text-[14px] text-error-deep">{error}</p>
       </div>
     );
   }
 
   if (prs.length === 0) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-hairline bg-canvas-soft">
-        <GitPullRequest className="h-12 w-12 text-mute" />
+      <div className="flex h-[400px] flex-col items-center justify-center gap-md rounded-lg border border-dashed border-hairline bg-canvas-soft">
+        <GitPullRequest className="w-12 h-12 text-mute" />
         <div className="text-center">
-          <h3 className="text-lg font-medium text-ink">No Pull Requests</h3>
-          <p className="text-sm text-mute">This repository has no reviewed pull requests yet.</p>
+          <h3 className="text-[16px] font-medium text-ink">No Pull Requests</h3>
+          <p className="text-[14px] text-mute">This repository has no reviewed pull requests yet.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-md">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-ink">Pull Requests</h2>
-        <p className="text-mute">Automated code reviews for this repository.</p>
+        <h2 className="text-[22px] font-semibold tracking-tight text-ink">Pull Requests</h2>
+        <p className="text-[14px] text-mute mt-xxs">Automated code reviews for this repository.</p>
       </div>
 
       <div className="rounded-md border border-hairline">
         {prs.map((pr, i) => (
           <div
             key={pr.id}
-            className={`flex items-center justify-between p-4 ${
+            className={`flex items-center justify-between p-lg ${
               i !== prs.length - 1 ? "border-b border-hairline" : ""
             }`}
           >
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <GitPullRequest className="h-4 w-4 text-mute" />
+            <div className="space-y-xxs">
+              <div className="flex items-center gap-xs">
+                <GitPullRequest className="w-4 h-4 text-mute" />
                 <Link
                   to={pr.latestReview ? `/repositories/${id}/pull-requests/${pr.id}` : "#"}
-                  className="font-medium text-ink hover:underline"
+                  className="font-medium text-[14px] text-ink hover:underline"
                 >
                   {pr.title}
                 </Link>
-                <span className="text-sm text-mute">#{pr.githubPrNumber}</span>
+                <span className="text-[13px] text-mute">#{pr.githubPrNumber}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-mute">
+              <div className="flex items-center gap-xs text-[13px] text-mute">
                 <span>by {pr.author}</span>
                 <span>•</span>
                 <span>{new Date(pr.createdAt).toLocaleDateString()}</span>
@@ -129,30 +129,30 @@ export function PullRequests() {
 
             <div>
               {pr.latestReview ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-sm">
                   {pr.latestReview.status === "PENDING" || pr.latestReview.status === "RUNNING" ? (
-                    <Badge variant="warning" className="gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                    <Badge variant="warning" className="gap-xxs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       {pr.latestReview.status}
                     </Badge>
                   ) : pr.latestReview.status === "FAILED" ? (
-                    <Badge variant="error" className="gap-1">
-                      <AlertCircle className="h-3 w-3" />
+                    <Badge variant="error" className="gap-xxs">
+                      <AlertCircle className="w-3.5 h-3.5" />
                       FAILED
                     </Badge>
                   ) : pr.latestReview.riskLevel === "HIGH" ? (
-                    <Badge variant="error" className="gap-1">
-                      <AlertTriangle className="h-3 w-3" />
+                    <Badge variant="error" className="gap-xxs">
+                      <AlertTriangle className="w-3.5 h-3.5" />
                       High Risk
                     </Badge>
                   ) : pr.latestReview.riskLevel === "MEDIUM" ? (
-                    <Badge variant="warning" className="gap-1">
-                      <AlertTriangle className="h-3 w-3" />
+                    <Badge variant="warning" className="gap-xxs">
+                      <AlertTriangle className="w-3.5 h-3.5" />
                       Medium Risk
                     </Badge>
                   ) : (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
+                    <Badge variant="success" className="gap-xxs">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       Low Risk
                     </Badge>
                   )}

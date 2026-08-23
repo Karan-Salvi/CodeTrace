@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { apiFetch } from "../lib/api-client";
 import { wsClient } from "../lib/websocket";
-import type { ProgressMessage, WsErrorMessage } from "../lib/websocket";
 import type { Repository } from "../types";
-import { CardSoft, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import type { RepositoryContext } from "../components/layout/RepositoryLayout";
+import { Card, CardSoft, CardFooter } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { GitBranch, ExternalLink, MessageSquare, RefreshCw, Loader2 } from "lucide-react";
 
 const NON_TERMINAL_STATUSES = new Set(["PENDING", "CLONING", "PARSING", "CHUNKING", "EMBEDDING", "STORING"]);
 
@@ -21,86 +22,33 @@ const STATUS_LABEL: Record<Repository["status"], string> = {
   FAILED: "Failed",
 };
 
+const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z" />
+  </svg>
+);
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-lg animate-pulse">
+      <div className="flex items-center gap-md">
+        <div className="w-11 h-11 rounded-full bg-canvas-soft border border-hairline shrink-0" />
+        <div className="space-y-2">
+          <div className="h-5 w-48 bg-canvas-soft rounded-xs" />
+          <div className="h-3.5 w-64 bg-canvas-soft rounded-xs" />
+        </div>
+      </div>
+      <div className="h-24 bg-canvas-soft border border-hairline rounded-md" />
+    </div>
+  );
+}
+
 export function RepositoryOverview() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [repository, setRepository] = useState<Repository | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { repository, setRepository, refetchRepository } = useOutletContext<RepositoryContext>();
   const [isTriggering, setIsTriggering] = useState(false);
   const [error, setError] = useState("");
-
-  // No GET /repositories/:id endpoint exists — only GET /repositories
-  // (list) and DELETE /repositories/:id. Fetch the list and find this
-  // repo by id. Returns the found repo (or null) so callers outside an
-  // effect (handleTriggerIndex, the progress-complete handler) can
-  // await + use the result directly instead of relying on a state
-  // update to have landed yet.
-  const fetchRepo = async (): Promise<Repository | null> => {
-    const repos = await apiFetch<Repository[]>("/repositories");
-    return repos.find((r) => r.id === id) ?? null;
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const repo = await fetchRepo();
-        if (cancelled) return;
-        if (repo) {
-          setRepository(repo);
-        } else {
-          navigate("/repositories");
-        }
-      } catch (e) {
-        if (!cancelled) console.error(e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, navigate]);
-
-  useEffect(() => {
-    if (!id) return;
-
-    wsClient.connect();
-    wsClient.subscribeToProgress(id);
-
-    const handleProgress = (payload: unknown) => {
-      const msg = payload as ProgressMessage;
-      setRepository((prev) =>
-        prev ? { ...prev, status: msg.status, filesIndexed: msg.filesIndexed, chunksIndexed: msg.chunksIndexed } : null
-      );
-    };
-
-    const handleComplete = () => {
-      // Re-fetch so embeddingCostUsd and any other server-computed
-      // fields the progress message doesn't carry are up to date once
-      // indexing actually finishes.
-      fetchRepo().then((repo) => {
-        if (repo) setRepository(repo);
-      });
-    };
-
-    const handleError = (payload: unknown) => {
-      const msg = payload as WsErrorMessage;
-      console.error("Progress subscription error:", msg.message);
-    };
-
-    wsClient.on("progress", handleProgress);
-    wsClient.on("progress-complete", handleComplete);
-    wsClient.on("error", handleError);
-
-    return () => {
-      wsClient.off("progress", handleProgress);
-      wsClient.off("progress-complete", handleComplete);
-      wsClient.off("error", handleError);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
 
   const handleTriggerIndex = async () => {
     if (!id) return;
@@ -115,6 +63,8 @@ export function RepositoryOverview() {
       // if two tabs are open).
       await apiFetch(`/repositories/${id}/index`, { method: "POST" });
       wsClient.subscribeToProgress(id);
+      const refreshed = await refetchRepository();
+      if (refreshed) setRepository(refreshed);
     } catch (e) {
       setError((e as Error).message || "Failed to start indexing");
     } finally {
@@ -133,71 +83,85 @@ export function RepositoryOverview() {
     }
   };
 
-  if (loading || !repository) return <div>Loading...</div>;
+  if (!repository) return <OverviewSkeleton />;
 
   const isIndexing = NON_TERMINAL_STATUSES.has(repository.status);
 
   return (
-    <div className="space-y-xl">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-display-md tracking-[-0.96px] text-ink font-semibold mb-xs">
-            {repository.owner}/{repository.name}
-          </h1>
-          <a
-            href={repository.githubUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-link hover:underline text-[14px]"
-          >
-            {repository.githubUrl}
-          </a>
+    <div className="space-y-lg">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-md">
+        <div className="flex items-center gap-md min-w-0">
+          <div className="w-11 h-11 rounded-full bg-canvas-soft border border-hairline flex items-center justify-center text-ink shrink-0">
+            <GithubIcon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-semibold tracking-tight text-ink truncate">
+              {repository.owner}/{repository.name}
+            </h1>
+            <a
+              href={repository.githubUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-xs text-[13px] text-mute hover:text-link transition-colors"
+            >
+              {repository.githubUrl}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
-        <div className="flex items-center gap-sm">
+        <div className="flex items-center gap-sm shrink-0">
           <Badge variant={repository.status === "INDEXED" ? "success" : repository.status === "FAILED" ? "error" : "warning"}>
             {STATUS_LABEL[repository.status]}
           </Badge>
-          <Button variant="secondary-sm" onClick={handleTriggerIndex} disabled={isIndexing || isTriggering}>
+          <Button variant="secondary-sm" onClick={handleTriggerIndex} disabled={isIndexing || isTriggering} className="gap-xs">
+            {isIndexing || isTriggering ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
             {isTriggering ? "Starting..." : isIndexing ? "Indexing..." : "Re-index"}
           </Button>
         </div>
       </div>
 
-      {error && <p className="text-error text-[14px] bg-error-soft p-sm rounded-xs">{error}</p>}
+      {error && <p className="text-error-deep text-[14px] bg-error-soft p-sm rounded-xs">{error}</p>}
 
-      <CardSoft>
-        <CardHeader>
-          <CardTitle>Indexing Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-body text-[14px]">{STATUS_LABEL[repository.status]}</p>
-          {isIndexing && (
-            <p className="text-[12px] text-mute font-mono mt-xs">
-              {repository.filesIndexed} files, {repository.chunksIndexed} chunks so far
-            </p>
-          )}
-          {repository.status === "INDEXED" && (
-            <p className="text-[12px] text-mute font-mono mt-xs">
-              {repository.filesIndexed} files, {repository.chunksIndexed} chunks — $
-              {Number(repository.embeddingCostUsd).toFixed(4)} embedding cost
-            </p>
-          )}
-        </CardContent>
+      <CardSoft className="flex items-center justify-between gap-md flex-wrap">
+        <div>
+          <p className="text-[13px] font-medium text-mute mb-xxs">Indexing Status</p>
+          <p className="text-[15px] font-medium text-ink">{STATUS_LABEL[repository.status]}</p>
+        </div>
+        <div className="flex items-center gap-lg text-[13px] text-mute font-mono">
+          <span className="flex items-center gap-xs">
+            <GitBranch className="w-3.5 h-3.5" />
+            {repository.defaultBranch}
+          </span>
+          <span>{repository.filesIndexed} files</span>
+          <span>{repository.chunksIndexed} chunks</span>
+          {repository.status === "INDEXED" && <span>${Number(repository.embeddingCostUsd).toFixed(4)}</span>}
+        </div>
       </CardSoft>
 
       {repository.status === "INDEXED" && (
-        <Button onClick={() => navigate(`/repositories/${id}/chat`)}>Ask questions about this repo</Button>
+        <Button onClick={() => navigate(`/repositories/${id}/chat`)} className="gap-xs">
+          <MessageSquare className="w-4 h-4" />
+          Ask questions about this repo
+        </Button>
       )}
 
-      <div className="pt-xl border-t border-hairline mt-2xl">
-        <h3 className="text-[16px] font-medium text-ink mb-sm">Danger Zone</h3>
-        <p className="text-body text-[14px] mb-md">
-          Deleting this repository will remove all associated index data. This action cannot be undone.
-        </p>
-        <Button className="bg-error hover:bg-error-deep text-white border-transparent" onClick={handleDelete}>
-          Delete Repository
-        </Button>
-      </div>
+      <Card className="overflow-hidden border-error/40">
+        <div className="p-lg">
+          <h3 className="text-[16px] font-semibold text-ink mb-xs">Danger Zone</h3>
+          <p className="text-[14px] text-mute max-w-[480px] leading-relaxed">
+            Deleting this repository will remove all associated index data. This action cannot be undone.
+          </p>
+        </div>
+        <CardFooter className="bg-error/10 border-error/40 flex justify-end">
+          <Button variant="danger-sm" onClick={handleDelete}>
+            Delete Repository
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
