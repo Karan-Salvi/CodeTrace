@@ -39,11 +39,18 @@ const EXAMPLE_QUESTIONS = [
 // than presented as a real reference. `markdownComponents` below
 // intercepts "cite:" hrefs and renders the citation button instead of
 // a real anchor.
-function citationsToMarkdownLinks(answer: string, citations: Message["citations"]): string {
-  const citationByKey = new Map(citations.map((c) => [`${c.file}:${c.startLine}-${c.endLine}`, c]));
+function citationsToMarkdownLinks(
+  answer: string,
+  citations: Message["citations"],
+): string {
+  const citationByKey = new Map(
+    citations.map((c) => [`${c.file}:${c.startLine}-${c.endLine}`, c]),
+  );
   return answer.replace(CITATION_PATTERN, (full, file, start, end) => {
     const citation = citationByKey.get(`${file}:${start}-${end}`);
-    return citation ? `[${file}:${start}-${end}](cite:${citation.chunkId})` : full;
+    return citation
+      ? `[${file}:${start}-${end}](cite:${citation.chunkId})`
+      : full;
   });
 }
 
@@ -68,7 +75,7 @@ function githubBlobUrl(citation: Citation, repo: RepoRef): string {
 function markdownComponents(
   citations: Message["citations"],
   onCitationClick: (citation: Citation) => void,
-  repo: RepoRef | null
+  repo: RepoRef | null,
 ): Components {
   return {
     a: ({ href, children }) => {
@@ -106,19 +113,42 @@ function markdownComponents(
         );
       }
       return (
-        <a href={href} target="_blank" rel="noreferrer" className="text-link underline hover:text-link-deep">
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-link underline hover:text-link-deep"
+        >
           {children}
         </a>
       );
     },
     p: ({ children }) => <p className="mb-sm last:mb-0">{children}</p>,
-    ul: ({ children }) => <ul className="list-disc pl-lg mb-sm space-y-xxs">{children}</ul>,
-    ol: ({ children }) => <ol className="list-decimal pl-lg mb-sm space-y-xxs">{children}</ol>,
+    ul: ({ children }) => (
+      <ul className="list-disc pl-lg mb-sm space-y-xxs">{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol className="list-decimal pl-lg mb-sm space-y-xxs">{children}</ol>
+    ),
     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-    h1: ({ children }) => <h1 className="text-[16px] font-semibold text-ink mt-md mb-xs first:mt-0">{children}</h1>,
-    h2: ({ children }) => <h2 className="text-[15px] font-semibold text-ink mt-md mb-xs first:mt-0">{children}</h2>,
-    h3: ({ children }) => <h3 className="text-[14px] font-semibold text-ink mt-sm mb-xs first:mt-0">{children}</h3>,
-    strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+    h1: ({ children }) => (
+      <h1 className="text-[16px] font-semibold text-ink mt-md mb-xs first:mt-0">
+        {children}
+      </h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-[15px] font-semibold text-ink mt-md mb-xs first:mt-0">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="text-[14px] font-semibold text-ink mt-sm mb-xs first:mt-0">
+        {children}
+      </h3>
+    ),
+    strong: ({ children }) => (
+      <strong className="font-semibold text-ink">{children}</strong>
+    ),
     code: ({ className, children }) => {
       // remark assigns fenced blocks a "language-xxx" className; a bare
       // inline `code` span gets none — that's the only reliable signal
@@ -199,7 +229,11 @@ export function RepositoryChat() {
   // is a reasonable fallback for a repo still mid-index, even though it
   // can drift out from under a specific cited line over time.
   const repoRef: RepoRef | null = repository
-    ? { owner: repository.owner, name: repository.name, ref: repository.currentCommitSha ?? repository.defaultBranch }
+    ? {
+        owner: repository.owner,
+        name: repository.name,
+        ref: repository.currentCommitSha ?? repository.defaultBranch,
+      }
     : null;
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -211,7 +245,9 @@ export function RepositoryChat() {
   // Only the assistant message that arrives via this session's own
   // WebSocket gets the typewriter reveal — history loaded from
   // GET .../messages on page load renders instantly.
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  );
 
   // Auto-grow with content, capped by the textarea's own max-h-[160px] —
   // reset to "auto" first so shrinking (e.g. after clearing on send) isn't
@@ -228,7 +264,9 @@ export function RepositoryChat() {
   // citation badge sits mid-sentence, so there's no natural place to grow
   // a code block directly under it without breaking the paragraph flow.
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
-  const [chunkCache, setChunkCache] = useState<Record<string, ChunkContent>>({});
+  const [chunkCache, setChunkCache] = useState<Record<string, ChunkContent>>(
+    {},
+  );
   const [chunkLoading, setChunkLoading] = useState(false);
   const [chunkError, setChunkError] = useState("");
   // Tracks which chunk is the "current" request, independent of React's
@@ -254,7 +292,9 @@ export function RepositoryChat() {
 
     setChunkLoading(true);
     try {
-      const data = await apiFetch<ChunkContent>(`/repositories/${id}/chunks/${citation.chunkId}`);
+      const data = await apiFetch<ChunkContent>(
+        `/repositories/${id}/chunks/${citation.chunkId}`,
+      );
       setChunkCache((prev) => ({ ...prev, [citation.chunkId]: data }));
     } catch (e) {
       if (activeChunkIdRef.current === citation.chunkId) {
@@ -278,17 +318,27 @@ export function RepositoryChat() {
       // thread that's already fully persisted server-side (chat.service.ts
       // writes every question/answer regardless of whether the frontend
       // is still around to show it).
-      const latest = await apiFetch<Conversation | null>(`/repositories/${id}/conversations/latest`);
+      const latest = await apiFetch<Conversation | null>(
+        `/repositories/${id}/conversations/latest`,
+      );
       if (cancelled) return;
       const conv =
-        latest ?? (await apiFetch<Conversation>(`/repositories/${id}/conversations`, { method: "POST", data: {} }));
+        latest ??
+        (await apiFetch<Conversation>(`/repositories/${id}/conversations`, {
+          method: "POST",
+          data: {},
+        }));
       if (cancelled) return;
       setConversation(conv);
-      const existing = await apiFetch<Message[]>(`/repositories/${id}/conversations/${conv.id}/messages`);
+      const existing = await apiFetch<Message[]>(
+        `/repositories/${id}/conversations/${conv.id}/messages`,
+      );
       if (cancelled) return;
       setMessages(existing);
     }
-    init().catch((e) => setError((e as Error).message || "Failed to start conversation"));
+    init().catch((e) =>
+      setError((e as Error).message || "Failed to start conversation"),
+    );
 
     return () => {
       cancelled = true;
@@ -320,9 +370,11 @@ export function RepositoryChat() {
     const handleError = (payload: unknown) => {
       const msg = payload as WsErrorMessage;
       setIsThinking(false);
-      setError(msg.message === "Too many requests"
-        ? "You're sending messages too fast — wait a moment and try again."
-        : msg.message);
+      setError(
+        msg.message === "Too many requests"
+          ? "You're sending messages too fast — wait a moment and try again."
+          : msg.message,
+      );
     };
 
     wsClient.on("chat:complete", handleComplete);
@@ -369,14 +421,22 @@ export function RepositoryChat() {
     setMessages([]);
     setActiveCitation(null);
     setStreamingMessageId(null);
-    const conv = await apiFetch<Conversation>(`/repositories/${id}/conversations`, { method: "POST", data: {} });
+    const conv = await apiFetch<Conversation>(
+      `/repositories/${id}/conversations`,
+      { method: "POST", data: {} },
+    );
     setConversation(conv);
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 w-full max-w-[860px] mx-auto">
       <div className="flex items-center justify-end mb-sm shrink-0">
-        <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
+        <Button
+          variant="ghost"
+          onClick={handleNewChat}
+          disabled={!conversation}
+          className="gap-xxs"
+        >
           <Plus className="w-3.5 h-3.5" />
           New chat
         </Button>
@@ -385,7 +445,9 @@ export function RepositoryChat() {
       <div className="flex-1 overflow-y-auto scrollbar-hide mb-md space-y-lg pr-sm">
         {messages.length === 0 && !isThinking && (
           <div className="flex h-full flex-col items-center justify-center gap-md text-center">
-            <p className="text-mute text-[14px]">Ask a question about this codebase to get started.</p>
+            <p className="text-mute text-[14px]">
+              Ask a question about this codebase to get started.
+            </p>
             <div className="flex flex-wrap justify-center gap-xs max-w-[520px]">
               {EXAMPLE_QUESTIONS.map((q) => (
                 <button
@@ -402,7 +464,10 @@ export function RepositoryChat() {
           </div>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === "USER" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === "USER" ? "justify-end" : "justify-start"}`}
+          >
             <div
               className={`max-w-[80%] px-md py-sm ${
                 msg.role === "USER"
@@ -417,7 +482,11 @@ export function RepositoryChat() {
                     citations={msg.citations}
                     onCitationClick={handleCitationClick}
                     stream={msg.id === streamingMessageId}
-                    onTick={() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" })}
+                    onTick={() =>
+                      messagesEndRef.current?.scrollIntoView({
+                        behavior: "auto",
+                      })
+                    }
                     repo={repoRef}
                   />
                 ) : (
@@ -448,7 +517,8 @@ export function RepositoryChat() {
         <div className="flex-shrink-0 mb-md rounded-sm border border-hairline overflow-hidden">
           <div className="flex items-center justify-between gap-sm px-sm py-xs bg-canvas-soft border-b border-hairline">
             <span className="text-[12px] font-mono text-mute truncate min-w-0">
-              {activeCitation.file}:{activeCitation.startLine}-{activeCitation.endLine}
+              {activeCitation.file}:{activeCitation.startLine}-
+              {activeCitation.endLine}
             </span>
             <button
               type="button"
@@ -459,9 +529,13 @@ export function RepositoryChat() {
             </button>
           </div>
           {chunkLoading ? (
-            <div className="text-mute text-[12px] px-sm py-sm">Loading code...</div>
+            <div className="text-mute text-[12px] px-sm py-sm">
+              Loading code...
+            </div>
           ) : chunkError ? (
-            <div className="text-error-deep text-[12px] px-sm py-sm">{chunkError}</div>
+            <div className="text-error-deep text-[12px] px-sm py-sm">
+              {chunkError}
+            </div>
           ) : chunkCache[activeCitation.chunkId] ? (
             <MonacoCodeViewer
               line={activeCitation.startLine}
