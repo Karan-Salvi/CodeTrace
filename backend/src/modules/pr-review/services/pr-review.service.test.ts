@@ -12,6 +12,7 @@ describe("runPrReview", () => {
   let pullRequestId: string;
 
   beforeEach(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -55,6 +56,7 @@ describe("runPrReview", () => {
   });
 
   afterAll(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -68,8 +70,8 @@ describe("runPrReview", () => {
 
   it("produces a pr_reviews row with a risk score, breakdown, and findings", async () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      JSON.stringify([
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: JSON.stringify([
         {
           category: "BUG",
           file: "src/auth/handleAuthError.ts",
@@ -80,8 +82,9 @@ describe("runPrReview", () => {
           citationStartLine: 1,
           citationEndLine: 12,
         },
-      ])
-    );
+      ]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const review = await runPrReview(pullRequestId, [
       { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
@@ -97,8 +100,8 @@ describe("runPrReview", () => {
 
   it("does not throw when the LLM wraps its JSON reply in a markdown code fence", async () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      "```json\n" +
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: "```json\n" +
         JSON.stringify([
           {
             category: "BUG",
@@ -111,8 +114,9 @@ describe("runPrReview", () => {
             citationEndLine: 12,
           },
         ]) +
-        "\n```"
-    );
+        "\n```",
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const review = await runPrReview(pullRequestId, [
       { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
@@ -125,9 +129,10 @@ describe("runPrReview", () => {
 
   it("saves zero findings instead of throwing when the LLM reply is not valid JSON", async () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      "I could not find any issues in this PR."
-    );
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: "I could not find any issues in this PR.",
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const review = await runPrReview(pullRequestId, [
       { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
@@ -141,7 +146,10 @@ describe("runPrReview", () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
     const generateChatCompletionSpy = vi
       .spyOn(llmService, "generateChatCompletion")
-      .mockResolvedValue(JSON.stringify([]));
+      .mockResolvedValue({
+        text: JSON.stringify([]),
+        usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+      });
 
     const first = await runPrReview(pullRequestId, [
       { filePath: "src/auth/handleAuthError.ts", startLine: 1, endLine: 12 },
@@ -166,6 +174,7 @@ describe("processPrReviewJob", () => {
   let pullRequestId: string;
 
   beforeEach(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -209,6 +218,7 @@ describe("processPrReviewJob", () => {
   });
 
   afterAll(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -230,8 +240,8 @@ describe("processPrReviewJob", () => {
       positionByFileAndLine: new Map([["src/auth/handleAuthError.ts", new Map([[1, 4]])]]),
     });
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      JSON.stringify([
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: JSON.stringify([
         {
           category: "BUG",
           file: "src/auth/handleAuthError.ts",
@@ -242,8 +252,9 @@ describe("processPrReviewJob", () => {
           citationStartLine: 1,
           citationEndLine: 12,
         },
-      ])
-    );
+      ]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
     const writebackSpy = vi
       .spyOn(githubWritebackService, "postReviewToGitHub")
       .mockResolvedValue({ posted: true });
@@ -259,6 +270,13 @@ describe("processPrReviewJob", () => {
     const savedReview = await prisma.prReview.findFirst({ where: { pullRequestId } });
     expect(savedReview?.status).toBe("COMPLETE");
     expect(savedReview?.writebackFailedAt).toBeNull();
+    expect(Number(savedReview?.llmCostUsd)).toBeGreaterThan(0);
+
+    const usageLogs = await prisma.usageLog.findMany({ where: { kind: "PR_REVIEW" } });
+    expect(usageLogs).toHaveLength(1);
+    expect(usageLogs[0]?.tokensUsed).toBe(150);
+    expect(Number(usageLogs[0]?.costUsd)).toBeGreaterThan(0);
+    expect(usageLogs[0]?.jobId).toBe("job-1");
   });
 
   it("marks writebackFailedAt without losing the saved review when GitHub rejects the write-back", async () => {
@@ -271,7 +289,10 @@ describe("processPrReviewJob", () => {
       positionByFileAndLine: new Map(),
     });
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(JSON.stringify([]));
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: JSON.stringify([]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
     vi.spyOn(githubWritebackService, "postReviewToGitHub").mockResolvedValue({
       posted: false,
       error: "status 422: stale diff",
@@ -331,7 +352,10 @@ describe("processPrReviewJob", () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
     const generateChatCompletionSpy = vi
       .spyOn(llmService, "generateChatCompletion")
-      .mockResolvedValue(JSON.stringify([]));
+      .mockResolvedValue({
+        text: JSON.stringify([]),
+        usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+      });
     generateChatCompletionSpy.mockClear();
     vi.spyOn(githubWritebackService, "postReviewToGitHub").mockResolvedValue({ posted: true });
 
@@ -386,7 +410,10 @@ describe("processPrReviewJob", () => {
 
     const generateChatCompletionSpy = vi.spyOn(llmService, "generateChatCompletion");
     generateChatCompletionSpy.mockRejectedValueOnce(new Error("503 UNAVAILABLE"));
-    generateChatCompletionSpy.mockResolvedValueOnce(JSON.stringify([]));
+    generateChatCompletionSpy.mockResolvedValueOnce({
+      text: JSON.stringify([]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const payload = { jobId: "job-6", pullRequestId, repositoryId, commitSha: "head456" };
     await expect(processPrReviewJob(payload)).rejects.toThrow("503 UNAVAILABLE");

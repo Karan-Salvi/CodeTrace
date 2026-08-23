@@ -9,6 +9,7 @@ describe("askQuestion", () => {
   let conversationId: string;
 
   beforeEach(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.message.deleteMany();
     await prisma.conversation.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -45,6 +46,7 @@ describe("askQuestion", () => {
   });
 
   afterAll(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.message.deleteMany();
     await prisma.conversation.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -58,9 +60,10 @@ describe("askQuestion", () => {
 
   it("returns a grounded answer with valid citations and persists the message", async () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      "handleAuthError checks for TokenExpiredError. [src/auth/handleAuthError.ts:1-12]"
-    );
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: "handleAuthError checks for TokenExpiredError. [src/auth/handleAuthError.ts:1-12]",
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const result = await askQuestion(repositoryId, conversationId, "what does handleAuthError do");
 
@@ -69,6 +72,11 @@ describe("askQuestion", () => {
 
     const messages = await prisma.message.findMany({ where: { conversationId } });
     expect(messages.some((m) => m.role === "ASSISTANT")).toBe(true);
+
+    const usageLogs = await prisma.usageLog.findMany({ where: { kind: "QA" } });
+    expect(usageLogs).toHaveLength(1);
+    expect(usageLogs[0]?.tokensUsed).toBe(150);
+    expect(Number(usageLogs[0]?.costUsd)).toBeGreaterThan(0);
   });
 
   it("returns the hallucination-guard response when retrieval finds nothing", async () => {
@@ -82,5 +90,8 @@ describe("askQuestion", () => {
 
     expect(result.answer).toContain("couldn't find enough evidence");
     expect(result.citations).toHaveLength(0);
+
+    const usageLogs = await prisma.usageLog.findMany({ where: { kind: "QA" } });
+    expect(usageLogs).toHaveLength(0);
   });
 });

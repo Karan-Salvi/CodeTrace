@@ -105,7 +105,7 @@ export async function getMe(req: Request, res: Response) {
   if (!user) {
     throw AppError.unauthorized("User not found");
   }
-  sendSuccess(res, user);
+  sendSuccess(res, { ...user, isOperator: user.id === env.OPERATOR_USER_ID });
 }
 
 export async function updateMe(req: Request, res: Response) {

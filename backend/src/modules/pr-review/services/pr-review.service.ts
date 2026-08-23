@@ -5,6 +5,9 @@ import { getOneHopDependencies } from "./dependency-retrieval.service.js";
 import { calculateRiskScore } from "./risk-score.service.js";
 import { retrieveContext } from "../../retrieval/services/retrieval.service.js";
 import { embedQuery, generateChatCompletion } from "../../chat/services/llm.service.js";
+import { computeCostUsd } from "../../chat/services/pricing.service.js";
+import { env } from "../../../config/env.js";
+import crypto from "crypto";
 import { validateCitation } from "../../chat/services/citation-validator.service.js";
 import { getPrDiff } from "./github-diff.service.js";
 import { postReviewToGitHub } from "./github-writeback.service.js";
@@ -81,7 +84,8 @@ export async function runPrReview(
   pullRequestId: string,
   changedRanges: ChangedLineRange[],
   commitSha?: string,
-  existingReviewId?: string
+  existingReviewId?: string,
+  jobId?: string
 ) {
   const pullRequest = await prisma.pullRequest.findUniqueOrThrow({ where: { id: pullRequestId } });
 
@@ -132,7 +136,7 @@ export async function runPrReview(
     "Only report findings tied to a concrete correctness/security/performance/test-coverage concern.";
   const userPrompt = `Changed symbols and context:\n${contextBlock}`;
 
-  const rawResponse = await generateChatCompletion(systemPrompt, userPrompt);
+  const { text: rawResponse, usage } = await generateChatCompletion(systemPrompt, userPrompt);
   const rawFindings: RawLlmFinding[] = parseRawFindings(rawResponse);
 
   const chunkByFileAndLines = new Map(
@@ -166,6 +170,8 @@ export async function runPrReview(
     criticalDirectories: [],
   });
 
+  const llmCostUsd = computeCostUsd(env.GEMINI_CHAT_MODEL, usage);
+
   const savedReview = await prisma.prReview.update({
     where: { id: review.id },
     data: {
@@ -176,6 +182,20 @@ export async function runPrReview(
       riskFactors: riskResult.factors as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       findings: findings as any,
+      llmCostUsd,
+    },
+  });
+
+  await prisma.usageLog.create({
+    data: {
+      repositoryId: pullRequest.repositoryId,
+      requestId: crypto.randomUUID(),
+      jobId,
+      kind: "PR_REVIEW",
+      tokensUsed: usage.totalTokens,
+      costUsd: llmCostUsd,
+      chunksRetrieved: retrieved.length,
+      chunksCited: findings.filter((f) => f.citation).length,
     },
   });
 
@@ -254,7 +274,8 @@ export async function processPrReviewJob(payload: PrReviewJobPayload): Promise<v
       pullRequest.id,
       diffResult.changedRanges,
       payload.commitSha,
-      review.id
+      review.id,
+      payload.jobId
     );
 
     await postWritebackAndRecordFailure(completedReview, pullRequest, token, diffResult);

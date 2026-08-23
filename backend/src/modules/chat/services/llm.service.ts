@@ -90,7 +90,12 @@ export async function embedQuery(text: string): Promise<number[]> {
   }
 }
 
-export async function generateChatCompletion(systemPrompt: string, userPrompt: string): Promise<string> {
+export interface ChatCompletionResult {
+  text: string;
+  usage: { promptTokens: number; candidatesTokens: number; totalTokens: number };
+}
+
+export async function generateChatCompletion(systemPrompt: string, userPrompt: string): Promise<ChatCompletionResult> {
   try {
     return await withRetry(
       async () => {
@@ -99,7 +104,15 @@ export async function generateChatCompletion(systemPrompt: string, userPrompt: s
           systemInstruction: systemPrompt,
         });
         const result = await model.generateContent(userPrompt);
-        return result.response.text();
+        const usageMetadata = result.response.usageMetadata;
+        return {
+          text: result.response.text(),
+          usage: {
+            promptTokens: usageMetadata?.promptTokenCount ?? 0,
+            candidatesTokens: usageMetadata?.candidatesTokenCount ?? 0,
+            totalTokens: usageMetadata?.totalTokenCount ?? 0,
+          },
+        };
       },
       // 500ms, 1s, 2s, 4s base delays (jittered) — enough headroom to ride
       // out a genuinely transient provider-side 503 without leaving the

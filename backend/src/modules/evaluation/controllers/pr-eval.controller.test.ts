@@ -14,6 +14,7 @@ describe("POST /evaluation/pr-run", () => {
   let token: string;
 
   beforeEach(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -59,6 +60,7 @@ describe("POST /evaluation/pr-run", () => {
   });
 
   afterAll(async () => {
+    await prisma.usageLog.deleteMany();
     await prisma.prReview.deleteMany();
     await prisma.pullRequest.deleteMany();
     await prisma.symbolRelationship.deleteMany();
@@ -72,8 +74,8 @@ describe("POST /evaluation/pr-run", () => {
 
   it("scores true/false positives against labeled issues and returns precision/recall", async () => {
     vi.spyOn(llmService, "embedQuery").mockResolvedValue(new Array(1536).fill(0.01));
-    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue(
-      JSON.stringify([
+    vi.spyOn(llmService, "generateChatCompletion").mockResolvedValue({
+      text: JSON.stringify([
         {
           category: "BUG",
           file: "src/auth/handleAuthError.ts",
@@ -84,8 +86,9 @@ describe("POST /evaluation/pr-run", () => {
           citationStartLine: 1,
           citationEndLine: 12,
         },
-      ])
-    );
+      ]),
+      usage: { promptTokens: 100, candidatesTokens: 50, totalTokens: 150 },
+    });
 
     const res = await request(app)
       .post("/evaluation/pr-run")

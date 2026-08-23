@@ -66,7 +66,7 @@ describe("embedQuery / generateChatCompletion (integration, requires GEMINI_API_
   it.skipIf(shouldSkip)(
     "generateChatCompletion returns non-empty text",
     async () => {
-      const text = await generateChatCompletion("You are a helpful assistant.", "Say hello in one word.");
+      const { text } = await generateChatCompletion("You are a helpful assistant.", "Say hello in one word.");
       expect(text.length).toBeGreaterThan(0);
     },
     // gemini-3.6-flash's own documented latency variance (0.5s-40s,
