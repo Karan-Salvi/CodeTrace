@@ -446,14 +446,14 @@ export function RepositoryChat() {
 
       {activeCitation && (
         <div className="flex-shrink-0 mb-md rounded-sm border border-hairline overflow-hidden">
-          <div className="flex items-center justify-between px-sm py-xs bg-canvas-soft border-b border-hairline">
-            <span className="text-[12px] font-mono text-mute">
+          <div className="flex items-center justify-between gap-sm px-sm py-xs bg-canvas-soft border-b border-hairline">
+            <span className="text-[12px] font-mono text-mute truncate min-w-0">
               {activeCitation.file}:{activeCitation.startLine}-{activeCitation.endLine}
             </span>
             <button
               type="button"
               onClick={() => setActiveCitation(null)}
-              className="text-[12px] text-mute hover:text-ink transition-colors cursor-pointer"
+              className="text-[12px] text-mute hover:text-ink transition-colors cursor-pointer shrink-0"
             >
               Close
             </button>
