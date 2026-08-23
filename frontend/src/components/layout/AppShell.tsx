@@ -25,7 +25,7 @@ export function AppShell() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-[100dvh] overflow-y-auto overflow-x-hidden">
         <DashboardTopbar />
-        <main className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-h-0 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
           <Outlet />
         </main>
       </div>

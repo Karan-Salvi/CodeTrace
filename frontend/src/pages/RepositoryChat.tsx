@@ -260,7 +260,7 @@ export function RepositoryChat() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[500px]">
+    <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-end mb-sm shrink-0">
         <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
           <Plus className="w-3.5 h-3.5" />

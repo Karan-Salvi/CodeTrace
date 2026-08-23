@@ -91,8 +91,8 @@ export function RepositoryLayout() {
   const context: RepositoryContext = { repository, setRepository, refetchRepository: fetchRepo };
 
   return (
-    <div className="flex flex-col gap-lg">
-      <div className="flex flex-col gap-xs">
+    <div className="flex flex-col gap-lg h-full min-h-0">
+      <div className="flex flex-col gap-xs shrink-0">
         <Link
           to="/repositories"
           className="inline-flex items-center gap-xxs w-fit text-[13px] text-mute hover:text-ink transition-colors"
@@ -112,8 +112,8 @@ export function RepositoryLayout() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row w-full gap-lg">
-        <aside className="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col gap-xs md:pr-lg md:border-r md:border-hairline">
+      <div className="flex flex-col md:flex-row w-full gap-lg flex-1 min-h-0">
+        <aside className="w-full md:w-56 shrink-0 flex flex-row md:flex-col gap-xs md:pr-lg md:border-r md:border-hairline">
           {TABS.map((tab) => {
             const path = `/repositories/${id}${tab.suffix}`;
             const active = location.pathname === path;
@@ -133,7 +133,7 @@ export function RepositoryLayout() {
             );
           })}
         </aside>
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 min-h-0 flex flex-col">
           <Outlet context={context} />
         </main>
       </div>
