@@ -53,7 +53,7 @@ export interface UsageSummaryResponse {
     costUsd: number;
     tokens: number;
     calls: number;
-    byKind: Record<"QA" | "PR_REVIEW", { costUsd: number; tokens: number; calls: number }>;
+    byKind: Record<"QA" | "PR_REVIEW" | "INDEXING", { costUsd: number; tokens: number; calls: number }>;
   };
   daily: Array<{ date: string; costUsd: number; calls: number }>;
   topRepositories: Array<{ repositoryId: string; owner: string; name: string; costUsd: number; calls: number }>;

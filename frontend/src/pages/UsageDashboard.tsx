@@ -4,7 +4,7 @@ import type { UsageSummaryResponse } from "../types";
 import { CardSoft } from "../components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/table";
 import { EmptyState, EmptyStateIcon, EmptyStateTitle, EmptyStateDescription } from "../components/ui/empty-state";
-import { DollarSign, Hash, MessageSquare, GitMerge, Gauge } from "lucide-react";
+import { DollarSign, Hash, MessageSquare, GitMerge, Gauge, Database } from "lucide-react";
 
 const RANGE_OPTIONS: Array<7 | 30 | 90> = [7, 30, 90];
 
@@ -53,10 +53,11 @@ function StatCard({
 }
 
 function KindBreakdown({ data }: { data: UsageSummaryResponse }) {
-  const { QA, PR_REVIEW } = data.totals.byKind;
-  const total = QA.costUsd + PR_REVIEW.costUsd;
-  const qaPct = total > 0 ? (QA.costUsd / total) * 100 : 50;
-  const prPct = 100 - qaPct;
+  const { QA, PR_REVIEW, INDEXING } = data.totals.byKind;
+  const total = QA.costUsd + PR_REVIEW.costUsd + (INDEXING?.costUsd || 0);
+  const qaPct = total > 0 ? (QA.costUsd / total) * 100 : 33.3;
+  const prPct = total > 0 ? (PR_REVIEW.costUsd / total) * 100 : 33.3;
+  const idxPct = total > 0 ? ((INDEXING?.costUsd || 0) / total) * 100 : 33.4;
 
   return (
     <CardSoft className="p-md">
@@ -66,6 +67,7 @@ function KindBreakdown({ data }: { data: UsageSummaryResponse }) {
           <>
             <div className="bg-success" style={{ width: `${qaPct}%` }} />
             <div className="bg-warning" style={{ width: `${prPct}%` }} />
+            <div className="bg-brand" style={{ width: `${idxPct}%` }} />
           </>
         ) : (
           <div className="bg-hairline w-full" />
@@ -85,6 +87,13 @@ function KindBreakdown({ data }: { data: UsageSummaryResponse }) {
             PR Review
           </span>
           <span className="font-mono text-ink">{formatCost(PR_REVIEW.costUsd)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[13px]">
+          <span className="flex items-center gap-xs text-body">
+            <Database className="w-3.5 h-3.5 text-brand" />
+            Indexing
+          </span>
+          <span className="font-mono text-ink">~{formatCost(INDEXING?.costUsd || 0)}</span>
         </div>
       </div>
     </CardSoft>
@@ -137,7 +146,7 @@ export function UsageDashboard() {
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight text-ink">Usage</h1>
           <p className="text-[14px] text-mute mt-xxs">
-            Real LLM spend — QA and PR-review only. Indexing cost is not yet tracked.
+            Real LLM spend — QA, PR-review and estimated indexing cost.
           </p>
         </div>
         <div className="flex items-center gap-xxs bg-canvas-soft border border-hairline rounded-full p-xxs w-fit">
