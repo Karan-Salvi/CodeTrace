@@ -56,6 +56,12 @@ const envSchema = z.object({
   EMBEDDING_PROVIDER: z.string().default("gemini"),
   EMBEDDING_MODEL_VERSION: z.string().min(1),
   INTERNAL_API_SECRET: z.string().min(16),
+
+  // Gates GET /usage/summary — an operator-only cross-user cost view.
+  // Optional and unset by default: with no value, requireOperator always
+  // 403s (fail closed), so no existing deployment or test needs to set
+  // this to keep working. Set to your own real users.id to enable it.
+  OPERATOR_USER_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

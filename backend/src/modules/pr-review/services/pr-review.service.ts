@@ -136,7 +136,9 @@ export async function runPrReview(
     "Only report findings tied to a concrete correctness/security/performance/test-coverage concern.";
   const userPrompt = `Changed symbols and context:\n${contextBlock}`;
 
+  const llmStartedAt = Date.now();
   const { text: rawResponse, usage } = await generateChatCompletion(systemPrompt, userPrompt);
+  const llmLatencyMs = Date.now() - llmStartedAt;
   const rawFindings: RawLlmFinding[] = parseRawFindings(rawResponse);
 
   const chunkByFileAndLines = new Map(
@@ -192,6 +194,8 @@ export async function runPrReview(
       requestId: crypto.randomUUID(),
       jobId,
       kind: "PR_REVIEW",
+      llmLatencyMs,
+      totalLatencyMs: llmLatencyMs,
       tokensUsed: usage.totalTokens,
       costUsd: llmCostUsd,
       chunksRetrieved: retrieved.length,
