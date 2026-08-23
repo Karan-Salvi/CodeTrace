@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { FolderGit2, Settings, LogOut, User, LayoutDashboard, MessageSquare, GitPullRequest, Network } from "lucide-react";
+import { FolderGit2, Settings, LogOut, User, LayoutDashboard, MessageSquare, GitPullRequest, Network, Gauge } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "../../lib/AuthContext";
 import { cn } from "../../lib/utils";
@@ -104,6 +104,20 @@ export function DashboardSidebar({ onNavigate }: DashboardSidebarProps = {}) {
               </Link>
             );
           })}
+
+          {user?.isOperator && (
+            <Link
+              to="/usage"
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-colors text-[13px] font-medium group cursor-pointer",
+                pathname === "/usage" ? "bg-canvas-soft text-ink" : "text-mute hover:text-ink hover:bg-canvas-soft/50"
+              )}
+            >
+              <Gauge className={cn("w-4 h-4", pathname === "/usage" ? "text-ink" : "text-mute group-hover:text-ink")} />
+              <span>Usage</span>
+            </Link>
+          )}
 
           {repoId && (
             <div className="ml-2 pl-2.5 border-l border-hairline flex flex-col gap-0.5 mt-0.5">

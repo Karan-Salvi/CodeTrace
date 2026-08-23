@@ -9,6 +9,7 @@ import { RepositoryImport } from "./pages/RepositoryImport";
 import { RepositoryLayout } from "./components/layout/RepositoryLayout";
 import { RepositoryOverview } from "./pages/RepositoryOverview";
 import { RepositoryChat } from "./pages/RepositoryChat";
+import { UsageDashboard } from "./pages/UsageDashboard";
 import { PullRequests } from "./pages/PullRequests";
 import { PullRequestReview } from "./pages/PullRequestReview";
 import { Settings } from "./pages/Settings";
@@ -34,6 +35,7 @@ function App() {
               <Route path="pull-requests/:prId" element={<PullRequestReview />} />
               <Route path="architecture" element={<RepositoryArchitecture />} />
             </Route>
+            <Route path="/usage" element={<UsageDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

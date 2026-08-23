@@ -44,6 +44,19 @@ export interface CurrentUser {
   email: string | null;
   avatarUrl: string | null;
   createdAt: string;
+  isOperator: boolean;
+}
+
+export interface UsageSummaryResponse {
+  rangeDays: 7 | 30 | 90;
+  totals: {
+    costUsd: number;
+    tokens: number;
+    calls: number;
+    byKind: Record<"QA" | "PR_REVIEW", { costUsd: number; tokens: number; calls: number }>;
+  };
+  daily: Array<{ date: string; costUsd: number; calls: number }>;
+  topRepositories: Array<{ repositoryId: string; owner: string; name: string; costUsd: number; calls: number }>;
 }
 
 export interface RepositoryInstallation {
