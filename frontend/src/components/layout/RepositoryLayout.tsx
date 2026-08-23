@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Outlet, Link, useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { apiFetch } from "../../lib/api-client";
@@ -30,12 +30,18 @@ export interface RepositoryContext {
   repository: Repository | null;
   setRepository: (repo: Repository) => void;
   refetchRepository: () => Promise<Repository | null>;
+  // Lets a child route (e.g. RepositoryChat's "New chat" button) render an
+  // action into the shared title row instead of a separate row of its own
+  // — set on mount, cleared on unmount, so switching tabs doesn't leave a
+  // stale action from whichever page set it last.
+  setHeaderAction: (action: ReactNode) => void;
 }
 
 export function RepositoryLayout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [repository, setRepository] = useState<Repository | null>(null);
+  const [headerAction, setHeaderAction] = useState<ReactNode>(null);
 
   const fetchRepo = async (): Promise<Repository | null> => {
     const repos = await apiFetch<Repository[]>("/repositories");
@@ -85,7 +91,7 @@ export function RepositoryLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const context: RepositoryContext = { repository, setRepository, refetchRepository: fetchRepo };
+  const context: RepositoryContext = { repository, setRepository, refetchRepository: fetchRepo, setHeaderAction };
 
   return (
     <div className="flex flex-col gap-lg h-full min-h-0">
@@ -97,6 +103,7 @@ export function RepositoryLayout() {
           <ChevronLeft className="w-3.5 h-3.5" />
           Repositories
         </Link>
+        <div className="flex items-center justify-between gap-sm min-w-0">
         <div className="flex items-center gap-sm min-w-0">
           <h1 className="text-[18px] font-semibold tracking-tight text-ink truncate">
             {repository ? `${repository.owner}/${repository.name}` : " "}
@@ -106,6 +113,8 @@ export function RepositoryLayout() {
               {STATUS_LABEL[repository.status]}
             </Badge>
           )}
+        </div>
+          {headerAction}
         </div>
       </div>
 

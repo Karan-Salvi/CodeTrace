@@ -224,7 +224,7 @@ function StreamingMarkdown({
 
 export function RepositoryChat() {
   const { id } = useParams();
-  const { repository } = useOutletContext<RepositoryContext>();
+  const { repository, setHeaderAction } = useOutletContext<RepositoryContext>();
   // currentCommitSha is null until the first index finishes — defaultBranch
   // is a reasonable fallback for a repo still mid-index, even though it
   // can drift out from under a specific cited line over time.
@@ -428,20 +428,19 @@ export function RepositoryChat() {
     setConversation(conv);
   };
 
+  useEffect(() => {
+    setHeaderAction(
+      <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
+        <Plus className="w-3.5 h-3.5" />
+        New chat
+      </Button>
+    );
+    return () => setHeaderAction(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation]);
+
   return (
     <div className="flex flex-col h-full min-h-0 w-full max-w-[860px] mx-auto">
-      <div className="flex items-center justify-end mb-sm shrink-0">
-        <Button
-          variant="ghost"
-          onClick={handleNewChat}
-          disabled={!conversation}
-          className="gap-xxs"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New chat
-        </Button>
-      </div>
-
       <div className="flex-1 overflow-y-auto scrollbar-hide mb-md space-y-lg pr-sm">
         {messages.length === 0 && !isThinking && (
           <div className="flex h-full flex-col items-center justify-center gap-md text-center">
