@@ -4,7 +4,7 @@ import type { UsageSummaryResponse } from "../types";
 import { CardSoft } from "../components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/table";
 import { EmptyState, EmptyStateIcon, EmptyStateTitle, EmptyStateDescription } from "../components/ui/empty-state";
-import { DollarSign, Hash, MessageSquare, GitMerge, Gauge, Database } from "lucide-react";
+import { DollarSign, Hash, MessageSquare, GitMerge, Gauge, GitBranch } from "lucide-react";
 
 const RANGE_OPTIONS: Array<7 | 30 | 90> = [7, 30, 90];
 
@@ -67,7 +67,7 @@ function KindBreakdown({ data }: { data: UsageSummaryResponse }) {
           <>
             <div className="bg-success" style={{ width: `${qaPct}%` }} />
             <div className="bg-warning" style={{ width: `${prPct}%` }} />
-            <div className="bg-brand" style={{ width: `${idxPct}%` }} />
+            <div className="bg-positive" style={{ width: `${idxPct}%` }} />
           </>
         ) : (
           <div className="bg-hairline w-full" />
@@ -90,7 +90,7 @@ function KindBreakdown({ data }: { data: UsageSummaryResponse }) {
         </div>
         <div className="flex items-center justify-between text-[13px]">
           <span className="flex items-center gap-xs text-body">
-            <Database className="w-3.5 h-3.5 text-brand" />
+            <GitBranch className="w-3.5 h-3.5 text-positive" />
             Indexing
           </span>
           <span className="font-mono text-ink">~{formatCost(INDEXING?.costUsd || 0)}</span>
@@ -189,10 +189,11 @@ export function UsageDashboard() {
             <StatCard icon={Hash} label="Avg cost / call" value={formatCost(avgCostPerCall)} />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-sm">
             <StatCard icon={Hash} label="Total tokens" value={data.totals.tokens.toLocaleString()} />
             <StatCard icon={MessageSquare} label="QA calls" value={String(data.totals.byKind.QA.calls)} />
             <StatCard icon={GitMerge} label="PR-review calls" value={String(data.totals.byKind.PR_REVIEW.calls)} />
+            <StatCard icon={GitBranch} label="Indexing cost" value={`~${formatCost(data.totals.byKind.INDEXING?.costUsd || 0)}`} />
             <StatCard icon={Gauge} label="Total calls" value={String(data.totals.calls)} />
           </div>
 
