@@ -12,8 +12,16 @@ export async function getUsageSummary(req: Request, res: Response) {
   const { days } = parsed.data;
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+  // Scoped to QA + PR_REVIEW only — a separate worker-side writer
+  // (worker/src/observability.py) already logs INDEXING rows here, and
+  // this dashboard is explicitly QA/PR-review-only (see the design spec's
+  // "What NOT to build"). Without this filter, real INDEXING rows would
+  // silently inflate totals.calls even today (their cost/tokens are
+  // currently 0, but the moment indexing cost tracking is wired up for
+  // real, an unfiltered query here would start misreporting "total cost"
+  // as including indexing when the page explicitly claims it doesn't).
   const logs = await prisma.usageLog.findMany({
-    where: { createdAt: { gte: cutoff } },
+    where: { createdAt: { gte: cutoff }, kind: { in: ["QA", "PR_REVIEW"] } },
     include: { repository: { select: { id: true, owner: true, name: true } } },
   });
 
