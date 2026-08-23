@@ -12,6 +12,7 @@ import { RepositoryChat } from "./pages/RepositoryChat";
 import { PullRequests } from "./pages/PullRequests";
 import { PullRequestReview } from "./pages/PullRequestReview";
 import { Settings } from "./pages/Settings";
+import { NotFound } from "./pages/NotFound";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
               <Route path="pull-requests/:prId" element={<PullRequestReview />} />
             </Route>
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
