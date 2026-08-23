@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -10,13 +11,7 @@ import type { Conversation, Message, Citation, ChunkContent, ConversationSummary
 import type { RepositoryContext } from "../components/layout/RepositoryLayout";
 import { Button } from "../components/ui/button";
 import { MonacoCodeViewer } from "../components/ui/MonacoCodeViewer";
-import { Plus, ArrowUp, Code2, Clock, Loader2 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "../components/ui/dropdown-menu";
+import { Plus, ArrowUp, Code2, Clock, Loader2, X, MessageSquare } from "lucide-react";
 
 const CITATION_PATTERN = /\[([^\]:]+):(\d+)-(\d+)\]/g;
 
@@ -244,6 +239,7 @@ export function RepositoryChat() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [historyList, setHistoryList] = useState<ConversationSummary[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -320,9 +316,8 @@ export function RepositoryChat() {
     let cancelled = false;
 
     async function init() {
-      // Still no conversation-list/pick UI in this MVP (out of scope per
-      // the plan) — but resume the most recent conversation instead of
-      // always POSTing a fresh one, so a page reload doesn't discard a
+      // Resume the most recent conversation on load instead of always
+      // POSTing a fresh one, so a page reload doesn't discard a
       // thread that's already fully persisted server-side (chat.service.ts
       // writes every question/answer regardless of whether the frontend
       // is still around to show it).
@@ -454,6 +449,7 @@ export function RepositoryChat() {
     setError("");
     setActiveCitation(null);
     setStreamingMessageId(null);
+    setHistoryOpen(false);
     try {
       const existing = await apiFetch<Message[]>(`/repositories/${id}/conversations/${summary.id}/messages`);
       setConversation({ id: summary.id, repositoryId: id, userId: "", title: summary.title, createdAt: summary.createdAt });
@@ -463,37 +459,18 @@ export function RepositoryChat() {
     }
   };
 
+  const openHistory = () => {
+    setHistoryOpen(true);
+    loadHistory();
+  };
+
   useEffect(() => {
     setHeaderAction(
       <div className="flex items-center gap-xs">
-        <DropdownMenu onOpenChange={(open) => open && loadHistory()}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-xxs">
-              <Clock className="w-3.5 h-3.5" />
-              History
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[280px] max-h-[320px] overflow-y-auto">
-            {historyLoading ? (
-              <div className="flex items-center justify-center py-md">
-                <Loader2 className="w-4 h-4 animate-spin text-mute" />
-              </div>
-            ) : !historyList || historyList.length === 0 ? (
-              <p className="text-[13px] text-mute px-sm py-sm">No previous conversations</p>
-            ) : (
-              historyList.map((summary) => (
-                <DropdownMenuItem
-                  key={summary.id}
-                  onSelect={() => switchToConversation(summary)}
-                  className="flex flex-col items-start gap-[2px] py-xs cursor-pointer"
-                >
-                  <span className="text-[13px] text-ink truncate w-full">{summary.title}</span>
-                  <span className="text-[11px] text-mute">{new Date(summary.lastMessageAt).toLocaleDateString()}</span>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="ghost" onClick={openHistory} className="gap-xxs">
+          <Clock className="w-3.5 h-3.5" />
+          History
+        </Button>
         <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
           <Plus className="w-3.5 h-3.5" />
           New chat
@@ -502,10 +479,86 @@ export function RepositoryChat() {
     );
     return () => setHeaderAction(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation, historyList, historyLoading]);
+  }, [conversation]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full max-w-[860px] mx-auto">
+    <>
+      <AnimatePresence>
+        {historyOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 bg-black/60 z-40"
+              onClick={() => setHistoryOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 38 }}
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-[360px] bg-canvas border-l border-hairline flex flex-col"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Conversation history"
+            >
+              <div className="flex items-center justify-between px-md h-14 border-b border-hairline shrink-0">
+                <h2 className="text-[14px] font-semibold text-ink">History</h2>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(false)}
+                  aria-label="Close history"
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-mute hover:text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-2xl">
+                    <Loader2 className="w-5 h-5 animate-spin text-mute" />
+                  </div>
+                ) : !historyList || historyList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-xs py-2xl px-md text-center">
+                    <MessageSquare className="w-6 h-6 text-mute" />
+                    <p className="text-[13px] text-mute">No previous conversations</p>
+                  </div>
+                ) : (
+                  <ul className="flex flex-col py-xs">
+                    {historyList.map((summary) => {
+                      const active = summary.id === conversation?.id;
+                      return (
+                        <li key={summary.id}>
+                          <button
+                            type="button"
+                            onClick={() => switchToConversation(summary)}
+                            className={`w-full flex flex-col items-start gap-xxs text-left px-md py-sm transition-colors cursor-pointer ${
+                              active ? "bg-canvas-soft" : "hover:bg-canvas-soft/50"
+                            }`}
+                          >
+                            <span className={`text-[13px] leading-snug line-clamp-2 ${active ? "text-ink font-medium" : "text-ink"}`}>
+                              {summary.title}
+                            </span>
+                            <span className="text-[11px] text-mute">
+                              {new Date(summary.lastMessageAt).toLocaleDateString()} · {summary.messageCount} message
+                              {summary.messageCount === 1 ? "" : "s"}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-col h-full min-h-0 w-full max-w-[860px] mx-auto">
       <div className="flex-1 overflow-y-auto scrollbar-hide mb-md space-y-lg pr-sm">
         {messages.length === 0 && !isThinking && (
           <div className="flex h-full flex-col items-center justify-center gap-md text-center">
@@ -639,6 +692,7 @@ export function RepositoryChat() {
           <ArrowUp className="w-4 h-4" />
         </Button>
       </form>
-    </div>
+      </div>
+    </>
   );
 }
