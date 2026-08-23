@@ -466,12 +466,12 @@ export function RepositoryChat() {
 
   useEffect(() => {
     setHeaderAction(
-      <div className="flex items-center gap-xs">
+      <div className="flex items-center gap-xs flex-wrap">
         <Button variant="ghost" onClick={openHistory} className="gap-xxs">
           <Clock className="w-3.5 h-3.5" />
           History
         </Button>
-        <Button variant="ghost" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
+        <Button variant="primary-sm" onClick={handleNewChat} disabled={!conversation} className="gap-xxs">
           <Plus className="w-3.5 h-3.5" />
           New chat
         </Button>

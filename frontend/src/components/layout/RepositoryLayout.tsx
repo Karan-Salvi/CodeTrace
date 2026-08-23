@@ -103,7 +103,7 @@ export function RepositoryLayout() {
           <ChevronLeft className="w-3.5 h-3.5" />
           Repositories
         </Link>
-        <div className="flex items-center justify-between gap-sm min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sm min-w-0">
         <div className="flex items-center gap-sm min-w-0">
           <h1 className="text-[18px] font-semibold tracking-tight text-ink truncate">
             {repository ? `${repository.owner}/${repository.name}` : " "}
@@ -114,7 +114,7 @@ export function RepositoryLayout() {
             </Badge>
           )}
         </div>
-          {headerAction}
+          {headerAction && <div className="shrink-0 flex justify-end">{headerAction}</div>}
         </div>
       </div>
 
