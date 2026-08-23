@@ -13,6 +13,7 @@ import { PullRequests } from "./pages/PullRequests";
 import { PullRequestReview } from "./pages/PullRequestReview";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/NotFound";
+import { RepositoryArchitecture } from "./pages/RepositoryArchitecture";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
               <Route path="chat" element={<RepositoryChat />} />
               <Route path="pull-requests" element={<PullRequests />} />
               <Route path="pull-requests/:prId" element={<PullRequestReview />} />
+              <Route path="architecture" element={<RepositoryArchitecture />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />

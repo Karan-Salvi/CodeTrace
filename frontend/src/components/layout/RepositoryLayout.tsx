@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useParams, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, GitPullRequest, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, MessageSquare, GitPullRequest, Network, ChevronLeft } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { apiFetch } from "../../lib/api-client";
 import { wsClient } from "../../lib/websocket";
@@ -12,6 +12,7 @@ const TABS = [
   { label: "Overview", icon: LayoutDashboard, suffix: "" },
   { label: "Chat", icon: MessageSquare, suffix: "/chat" },
   { label: "Pull Requests", icon: GitPullRequest, suffix: "/pull-requests" },
+  { label: "Architecture", icon: Network, suffix: "/architecture" },
 ];
 
 const STATUS_LABEL: Record<Repository["status"], string> = {

@@ -147,3 +147,46 @@ export interface ChunkContent {
   startLine: number;
   endLine: number;
 }
+
+export type RelationshipTypeName = "CALLS" | "IMPORTS" | "EXTENDS" | "IMPLEMENTS";
+
+export interface FileGraphNode {
+  id: string;
+  path: string;
+  symbolCount: number;
+  topSymbols: Array<{ chunkId: string; symbol: string }>;
+}
+
+export interface FileGraphEdge {
+  source: string;
+  target: string;
+  counts: Record<RelationshipTypeName, number>;
+}
+
+export interface FileGraphResponse {
+  scope: "file";
+  nodes: FileGraphNode[];
+  edges: FileGraphEdge[];
+}
+
+export interface SymbolGraphNode {
+  id: string;
+  symbol: string;
+  symbolType: "FUNCTION" | "METHOD" | "CLASS" | "INTERFACE" | null;
+  file: string | null;
+  startLine: number | null;
+  external: boolean;
+}
+
+export interface SymbolGraphEdge {
+  source: string;
+  target: string;
+  type: RelationshipTypeName;
+}
+
+export interface SymbolGraphResponse {
+  scope: "symbol";
+  root: string;
+  nodes: SymbolGraphNode[];
+  edges: SymbolGraphEdge[];
+}
