@@ -20,4 +20,4 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   )
 $$;
 
-REINDEX INDEX chunks_fts_idx;
+REINDEX INDEX CONCURRENTLY chunks_fts_idx;

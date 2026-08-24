@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "worker:pr-review": "tsx watch src/workers/pr-review.worker.ts",
-    "seed:eval-fixture": "tsx scripts/seed-eval-fixture.ts"
+    "seed:eval-fixture": "tsx scripts/seed-eval-fixture.ts",
+    "migrate:concurrent": "tsx scripts/apply-concurrent-migrations.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -43,8 +43,14 @@ $$;
 -- place — this file is documented above as runnable standalone ("run once
 -- against the DB"), so it must actually replace the index, same as
 -- migrations/20260824180000_fts_split_identifier_words/migration.sql does.
-DROP INDEX IF EXISTS chunks_fts_idx;
+--
+-- CONCURRENTLY: cannot run inside a transaction block, so this can NOT be
+-- applied via plain `prisma migrate deploy` (which wraps every migration
+-- in one) — use backend/scripts/apply-concurrent-migrations.ts instead,
+-- which runs each statement as its own autocommit query, then records the
+-- migration as applied via `prisma migrate resolve --applied`.
+DROP INDEX CONCURRENTLY IF EXISTS chunks_fts_idx;
 
-CREATE INDEX IF NOT EXISTS chunks_fts_idx ON chunks
+CREATE INDEX CONCURRENTLY IF NOT EXISTS chunks_fts_idx ON chunks
   USING gin (to_tsvector('simple',
     fts_normalize(symbol) || ' ' || fts_normalize(coalesce(parent_symbol, '')) || ' ' || fts_normalize(content)));

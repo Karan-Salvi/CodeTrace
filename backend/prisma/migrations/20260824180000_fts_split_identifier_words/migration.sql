@@ -22,8 +22,8 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   SELECT coalesce(input, '') || ' ' || split_identifier_words(input)
 $$;
 
-DROP INDEX IF EXISTS chunks_fts_idx;
+DROP INDEX CONCURRENTLY IF EXISTS chunks_fts_idx;
 
-CREATE INDEX IF NOT EXISTS chunks_fts_idx ON chunks
+CREATE INDEX CONCURRENTLY IF NOT EXISTS chunks_fts_idx ON chunks
   USING gin (to_tsvector('simple',
     fts_normalize(symbol) || ' ' || fts_normalize(coalesce(parent_symbol, '')) || ' ' || fts_normalize(content)));
