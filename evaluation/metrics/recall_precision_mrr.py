@@ -14,11 +14,15 @@ def format_retrieval_table(results: dict[str, dict[str, float]]) -> str:
             cells.append(f"{value * 100:>12.0f}%" if as_percent else f"{value:>13.2f}")
         return f"{label:<20}" + "   ".join(cells)
 
+    # Labels say @8, not @5 — RETRIEVAL_FINAL_K (backend/src/config/constants.ts)
+    # is 8, shared with production context assembly. Field keys stay
+    # recall_at_5/precision_at_5 to match the DB column names (EvalRun),
+    # only the display label was wrong.
     lines = [
         header,
         "",
-        row("Recall@5", "recall_at_5", True),
-        row("Precision@5", "precision_at_5", True),
+        row("Recall@8", "recall_at_5", True),
+        row("Precision@8", "precision_at_5", True),
         row("MRR", "mrr", False),
     ]
     return "\n".join(lines)

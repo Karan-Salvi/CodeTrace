@@ -142,5 +142,115 @@
         "symbol": "calculateRiskScore"
       }
     ]
+  },
+  {
+    "question": "How do we refresh an expired access token?",
+    "expectedChunks": [
+      { "path": "src/auth/refreshAccessToken.ts", "symbol": "refreshAccessToken" }
+    ]
+  },
+  {
+    "question": "What happens when a user logs out?",
+    "expectedChunks": [
+      { "path": "src/auth/logoutUser.ts", "symbol": "logoutUser" }
+    ]
+  },
+  {
+    "question": "How is a repository archived?",
+    "expectedChunks": [
+      { "path": "src/repository/archiveRepository.ts", "symbol": "archiveRepository" }
+    ]
+  },
+  {
+    "question": "How is a repository renamed, and what validation happens first?",
+    "expectedChunks": [
+      { "path": "src/repository/renameRepository.ts", "symbol": "renameRepository" }
+    ]
+  },
+  {
+    "question": "How do we check that stored content still matches what was recorded earlier, without trusting the caller's claim?",
+    "expectedChunks": [
+      { "path": "src/hashing/verify_hash.py", "symbol": "verify_hash" }
+    ]
+  },
+  {
+    "question": "How is a single user record looked up by their id?",
+    "expectedChunks": [
+      { "path": "src/db/findUserById.ts", "symbol": "findUserById" }
+    ]
+  },
+  {
+    "question": "How many repositories does a given owner have?",
+    "expectedChunks": [
+      { "path": "src/db/countRepositories.ts", "symbol": "countRepositories" }
+    ]
+  },
+  {
+    "question": "How are a user's settings reset back to defaults?",
+    "expectedChunks": [
+      { "path": "src/settings/resetUserSettings.ts", "symbol": "resetUserSettings" }
+    ]
+  },
+  {
+    "question": "What happens when a user is refunded?",
+    "expectedChunks": [
+      { "path": "src/billing/refundUser.ts", "symbol": "refundUser" }
+    ]
+  },
+  {
+    "question": "How is a human-readable summary of a diff's changed file and line counts produced?",
+    "expectedChunks": [
+      { "path": "src/pr/formatDiffSummary.ts", "symbol": "formatDiffSummary" }
+    ]
+  },
+  {
+    "question": "How do we tell whether a diff still has unresolved conflict markers in it?",
+    "expectedChunks": [
+      { "path": "src/pr/mergeConflictDetector.ts", "symbol": "hasMergeConflict" }
+    ]
+  },
+  {
+    "question": "How does the chat UI wrap a piece of code so it renders as a fenced block?",
+    "expectedChunks": [
+      { "path": "src/chat/formatCodeBlock.ts", "symbol": "formatCodeBlock" }
+    ]
+  },
+  {
+    "question": "How does an indexing job get put back so another worker can pick it up?",
+    "expectedChunks": [
+      { "path": "src/indexing/releaseJob.ts", "symbol": "releaseJob" }
+    ]
+  },
+  {
+    "question": "How is a user's rate limit counter cleared?",
+    "expectedChunks": [
+      { "path": "src/ratelimit/reset_limit.py", "symbol": "reset_limit" }
+    ]
+  },
+  {
+    "question": "How do we roughly estimate the number of tokens in a piece of text?",
+    "expectedChunks": [
+      { "path": "src/cost/estimate_tokens.py", "symbol": "estimate_tokens" }
+    ]
+  },
+  {
+    "question": "How are users notified about an event?",
+    "expectedChunks": [
+      { "path": "src/notifications/sendEmailNotification.ts", "symbol": "sendEmailNotification" },
+      { "path": "src/notifications/sendSlackNotification.ts", "symbol": "sendSlackNotification" }
+    ]
+  },
+  {
+    "question": "How is an incoming webhook's signature verified?",
+    "expectedChunks": [
+      { "path": "src/webhooks/verifyWebhookSignature.ts", "symbol": "verifyWebhookSignature" }
+    ]
+  },
+  {
+    "question": "What's involved end to end in making sure a chunk's content hasn't been tampered with — from computing its hash to checking it later?",
+    "expectedChunks": [
+      { "path": "src/hashing/hasher.py", "symbol": "content_hash" },
+      { "path": "src/hashing/verify_hash.py", "symbol": "verify_hash" }
+    ]
   }
 ]

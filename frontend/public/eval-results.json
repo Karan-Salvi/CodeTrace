@@ -1,25 +1,25 @@
 {
-  "generatedAt": "2026-08-23T18:55:23.552849+00:00",
+  "generatedAt": "2026-08-24T17:31:30.835004+00:00",
   "retrieval": {
     "Vector": {
       "recall_at_5": 1,
-      "precision_at_5": 0.125,
-      "mrr": 0.96875
+      "precision_at_5": 0.1323529411764706,
+      "mrr": 0.9705882352941176
     },
     "Keyword": {
-      "recall_at_5": 0.875,
-      "precision_at_5": 0.5833333333333334,
-      "mrr": 0.75
+      "recall_at_5": 0.8235294117647058,
+      "precision_at_5": 0.3056372549019608,
+      "mrr": 0.5664565826330531
     },
     "Hybrid": {
       "recall_at_5": 1,
-      "precision_at_5": 0.125,
-      "mrr": 0.96875
+      "precision_at_5": 0.1323529411764706,
+      "mrr": 0.8774509803921569
     },
     "Hybrid+Rerank": {
       "recall_at_5": 1,
-      "precision_at_5": 0.125,
-      "mrr": 1
+      "precision_at_5": 0.1323529411764706,
+      "mrr": 0.9705882352941176
     }
   },
   "prReview": {

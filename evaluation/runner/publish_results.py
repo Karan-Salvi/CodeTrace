@@ -72,7 +72,7 @@ def format_readme_table(snapshot: dict) -> str:
         "",
         "**Retrieval quality**",
         "",
-        "| Config | Recall@5 | Precision@5 | MRR |",
+        "| Config | Recall@8 | Precision@8 | MRR |",
         "| --- | --- | --- | --- |",
     ]
     for config in RETRIEVAL_CONFIG_ORDER:

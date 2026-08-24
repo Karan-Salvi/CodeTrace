@@ -202,5 +202,187 @@
     "endLine": 4,
     "calls": [],
     "bugCategory": "TESTING"
+  },
+  {
+    "path": "auth/refreshAccessToken.ts",
+    "language": "typescript",
+    "symbol": "refreshAccessToken",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 9,
+    "calls": []
+  },
+  {
+    "path": "auth/logoutUser.ts",
+    "language": "typescript",
+    "symbol": "logoutUser",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 7,
+    "calls": []
+  },
+  {
+    "path": "repository/archiveRepository.ts",
+    "language": "typescript",
+    "symbol": "archiveRepository",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 7,
+    "calls": []
+  },
+  {
+    "path": "repository/renameRepository.ts",
+    "language": "typescript",
+    "symbol": "renameRepository",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 11,
+    "calls": []
+  },
+  {
+    "path": "hashing/verify_hash.py",
+    "language": "python",
+    "symbol": "verify_hash",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 4,
+    "endLine": 5,
+    "calls": [
+      "content_hash"
+    ]
+  },
+  {
+    "path": "db/findUserById.ts",
+    "language": "typescript",
+    "symbol": "findUserById",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 6,
+    "calls": []
+  },
+  {
+    "path": "db/countRepositories.ts",
+    "language": "typescript",
+    "symbol": "countRepositories",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 7,
+    "calls": []
+  },
+  {
+    "path": "settings/resetUserSettings.ts",
+    "language": "typescript",
+    "symbol": "resetUserSettings",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 7,
+    "calls": []
+  },
+  {
+    "path": "billing/refundUser.ts",
+    "language": "typescript",
+    "symbol": "refundUser",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 10,
+    "calls": []
+  },
+  {
+    "path": "pr/formatDiffSummary.ts",
+    "language": "typescript",
+    "symbol": "formatDiffSummary",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": []
+  },
+  {
+    "path": "pr/mergeConflictDetector.ts",
+    "language": "typescript",
+    "symbol": "hasMergeConflict",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": []
+  },
+  {
+    "path": "chat/formatCodeBlock.ts",
+    "language": "typescript",
+    "symbol": "formatCodeBlock",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 3,
+    "calls": []
+  },
+  {
+    "path": "indexing/releaseJob.ts",
+    "language": "typescript",
+    "symbol": "releaseJob",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 7,
+    "calls": []
+  },
+  {
+    "path": "ratelimit/reset_limit.py",
+    "language": "python",
+    "symbol": "reset_limit",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 2,
+    "calls": []
+  },
+  {
+    "path": "cost/estimate_tokens.py",
+    "language": "python",
+    "symbol": "estimate_tokens",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 2,
+    "calls": []
+  },
+  {
+    "path": "notifications/sendEmailNotification.ts",
+    "language": "typescript",
+    "symbol": "sendEmailNotification",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 8,
+    "calls": []
+  },
+  {
+    "path": "notifications/sendSlackNotification.ts",
+    "language": "typescript",
+    "symbol": "sendSlackNotification",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 1,
+    "endLine": 8,
+    "calls": []
+  },
+  {
+    "path": "webhooks/verifyWebhookSignature.ts",
+    "language": "typescript",
+    "symbol": "verifyWebhookSignature",
+    "symbolType": "FUNCTION",
+    "parentSymbol": null,
+    "startLine": 3,
+    "endLine": 6,
+    "calls": []
   }
 ]

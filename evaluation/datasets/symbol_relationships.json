@@ -106,5 +106,59 @@
     "type": "CALLS",
     "from_symbol": "calculateRiskScore",
     "to": "Math.min"
+  },
+  {
+    "file": "hashing/verify_hash.py",
+    "type": "IMPORTS",
+    "from_symbol": null,
+    "to": ".hasher"
+  },
+  {
+    "file": "hashing/verify_hash.py",
+    "type": "CALLS",
+    "from_symbol": "verify_hash",
+    "to": "content_hash"
+  },
+  {
+    "file": "db/findUserById.ts",
+    "type": "CALLS",
+    "from_symbol": "findUserById",
+    "to": "db.query"
+  },
+  {
+    "file": "db/countRepositories.ts",
+    "type": "CALLS",
+    "from_symbol": "countRepositories",
+    "to": "db.query"
+  },
+  {
+    "file": "repository/renameRepository.ts",
+    "type": "CALLS",
+    "from_symbol": "renameRepository",
+    "to": "db.update"
+  },
+  {
+    "file": "repository/renameRepository.ts",
+    "type": "CALLS",
+    "from_symbol": "renameRepository",
+    "to": "newName.trim"
+  },
+  {
+    "file": "repository/archiveRepository.ts",
+    "type": "CALLS",
+    "from_symbol": "archiveRepository",
+    "to": "db.update"
+  },
+  {
+    "file": "billing/refundUser.ts",
+    "type": "CALLS",
+    "from_symbol": "refundUser",
+    "to": "gateway.refund"
+  },
+  {
+    "file": "billing/refundUser.ts",
+    "type": "CALLS",
+    "from_symbol": "refundUser",
+    "to": "db.insertBillingRecord"
   }
 ]

@@ -108,8 +108,8 @@ answer.
 ## Evaluation
 
 Retrieval quality is not asserted, it's measured — see `evaluation.md`. A
-fixed 15-20 question set against a real test repo is scored for
-Recall@5, Precision@5, and MRR across four configurations:
+fixed 34-question set against a real test repo is scored for
+Recall@8, Precision@8, and MRR across four configurations:
 
 ```
 Vector only

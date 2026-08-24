@@ -80,8 +80,8 @@ export function EvalResults() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Config</TableHead>
-                    <TableHead>Recall@5</TableHead>
-                    <TableHead>Precision@5</TableHead>
+                    <TableHead>Recall@8</TableHead>
+                    <TableHead>Precision@8</TableHead>
                     <TableHead>MRR</TableHead>
                   </TableRow>
                 </TableHeader>

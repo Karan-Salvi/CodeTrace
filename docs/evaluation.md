@@ -26,7 +26,7 @@ evaluation/
 
 ## Retrieval evaluation
 
-`datasets/qa_questions.json` — 15-20 hand-written questions against a real
+`datasets/qa_questions.json` — 34 hand-written questions against a real
 test repository, each with the expected chunk(s) that should be retrieved.
 
 `runner/retrieval_eval.py` runs each question through four retrieval
@@ -43,17 +43,21 @@ Metrics computed by `metrics/recall_precision_mrr.py`:
 
 | metric      | meaning                                                |
 | ----------- | ------------------------------------------------------ |
-| Recall@5    | was the expected chunk in the top 5 results?           |
-| Precision@5 | what fraction of the top 5 were relevant?              |
+| Recall@8    | was the expected chunk in the top 8 results?           |
+| Precision@8 | what fraction of the top 8 were relevant?              |
 | MRR         | how high up was the first relevant result, on average? |
+
+`@8` matches `RETRIEVAL_FINAL_K` (`backend/src/config/constants.ts`), the
+same constant production retrieval uses for context assembly — not an
+independent eval-only window.
 
 Output format:
 
 ```
                     Vector   Keyword   Hybrid   Hybrid+Rerank
 
-Recall@5              61%       54%      82%        86%
-Precision@5           58%       49%      78%        82%
+Recall@8              61%       54%      82%        86%
+Precision@8           58%       49%      78%        82%
 MRR                   0.61      0.55     0.79       0.84
 ```
 
