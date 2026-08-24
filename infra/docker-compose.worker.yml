@@ -1,0 +1,19 @@
+# Explicit project name — see docker-compose.single-vm.yml's comment:
+# without this, the default directory-based project name ("infra")
+# collides with docker-compose.dev.yml's containers/volumes.
+name: codetrace-worker
+
+services:
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - env/.env.worker
+    # No postgres/redis service here — this file runs on its own VM.
+    # env/.env.worker's DATABASE_URL/REDIS_URL/BACKEND_INTERNAL_URL must
+    # point at the backend VM's private IP (deployment.md), not a
+    # Docker-internal hostname — there is no shared compose network
+    # across two separate VMs.
+    stop_grace_period: 60s

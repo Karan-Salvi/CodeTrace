@@ -1,0 +1,93 @@
+# Explicit project name: without this, Docker Compose defaults to the
+# containing directory's name ("infra") for both this file and
+# docker-compose.dev.yml — identical default project names mean
+# identical container/volume names, so booting this stack silently stops
+# and replaces the real local dev postgres/redis containers instead of
+# running alongside them (confirmed the hard way: real session data sat
+# in the dev postgres container this collided with — recovered by
+# restoring dev's containers against the same, thankfully-shared volume,
+# but that's luck, not a guarantee). A distinct name keeps this stack
+# fully isolated from local dev, always.
+name: codetrace-single-vm
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: codetrace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: codetrace
+    volumes:
+      - codetrace_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codetrace -d codetrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - codetrace_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - env/.env.backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - env/.env.worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # worker/Dockerfile's own comment documents why: Worker.close() waits
+    # for the current job to finish with no internal timeout, and
+    # indexing jobs can run minutes — Docker's 10s default stop grace
+    # period would force-kill mid-job otherwise.
+    stop_grace_period: 60s
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  codetrace_postgres_data:
+  codetrace_redis_data:
