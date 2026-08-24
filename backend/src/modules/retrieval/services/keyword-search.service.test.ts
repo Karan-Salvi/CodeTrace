@@ -78,6 +78,22 @@ describe("keywordSearch", () => {
     expect(topChunk?.symbol).toBe("handleAuthError");
   });
 
+  it("matches a prose question against a word inside a camelCase identifier, not just the whole identifier", async () => {
+    // Regression: 'simple' config never splits camelCase/snake_case, so
+    // to_tsvector('simple', 'connectRepository') is ONE lexeme
+    // ('connectrepository'). A real chat question phrased as prose
+    // ("connect a new repository") shares zero tokens with that lexeme —
+    // confirmed with a real to_tsvector() call before this fix, zero
+    // overlap between question and content/symbol lexemes. fts_normalize
+    // adds the boundary-split words ("connect", "repository") alongside
+    // the original identifier so this now matches.
+    const results = await keywordSearch(repositoryId, "How do we connect a new repository to a user account?", 5);
+    expect(results.length).toBeGreaterThan(0);
+
+    const topChunk = await prisma.chunk.findUnique({ where: { id: results[0].chunkId } });
+    expect(topChunk?.symbol).toBe("connectRepository");
+  });
+
   it("returns no results scoped outside the repository", async () => {
     const results = await keywordSearch("00000000-0000-0000-0000-000000000000", "handleAuthError", 5);
     expect(results).toHaveLength(0);

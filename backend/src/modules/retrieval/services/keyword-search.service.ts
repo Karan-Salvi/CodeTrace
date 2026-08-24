@@ -18,18 +18,25 @@ export async function keywordSearch(
   // engine — while ts_rank still ranks chunks matching MORE terms higher.
   if (!queryText.trim()) return [];
 
+  // fts_normalize/split_identifier_words (migration
+  // 20260824180000_fts_split_identifier_words, backend/prisma/sql/indexes.sql):
+  // 'simple' never splits camelCase/snake_case, so "sendEmailNotification"
+  // was one lexeme and a prose question sharing "notification" as a
+  // standalone word never matched it. This expression MUST match
+  // chunks_fts_idx's index expression exactly, or Postgres can't use the
+  // index for this query.
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     WITH query AS (
       SELECT to_tsquery('simple', string_agg(lexeme, ' | ')) AS tsq
-      FROM unnest(tsvector_to_array(to_tsvector('simple', ${queryText}))) AS lexeme
+      FROM unnest(tsvector_to_array(to_tsvector('simple', fts_normalize(${queryText})))) AS lexeme
     )
     SELECT id
     FROM chunks, query
     WHERE repository_id = ${repositoryId}
       AND query.tsq IS NOT NULL
-      AND to_tsvector('simple', symbol || ' ' || coalesce(parent_symbol, '') || ' ' || content) @@ query.tsq
+      AND to_tsvector('simple', fts_normalize(symbol) || ' ' || fts_normalize(coalesce(parent_symbol, '')) || ' ' || fts_normalize(content)) @@ query.tsq
     ORDER BY ts_rank(
-      to_tsvector('simple', symbol || ' ' || coalesce(parent_symbol, '') || ' ' || content),
+      to_tsvector('simple', fts_normalize(symbol) || ' ' || fts_normalize(coalesce(parent_symbol, '')) || ' ' || fts_normalize(content)),
       query.tsq
     ) DESC
     LIMIT ${limit}
