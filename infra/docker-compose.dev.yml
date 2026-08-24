@@ -30,6 +30,67 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      # Overrides backend/.env's localhost:5433/6380 (the host-mapped
+      # ports, correct for `npm run dev` running directly on the host) —
+      # from inside this container, "localhost" is the container itself,
+      # not the postgres/redis containers. Docker Compose's internal DNS
+      # resolves service names instead, on the real internal ports.
+      DATABASE_URL: postgresql://codetrace:codetrace_dev_password@postgres:5432/codetrace
+      REDIS_URL: redis://:codetrace_dev_password@redis:6379
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../backend/src:/build/backend/src
+      - ../backend/scripts:/build/backend/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - ../frontend/.env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend/src:/build/frontend/src
+    depends_on:
+      - backend
+
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - ../worker/.env
+    environment:
+      # Same reasoning as backend's override above.
+      DATABASE_URL: postgresql://codetrace:codetrace_dev_password@postgres:5432/codetrace
+      REDIS_URL: redis://:codetrace_dev_password@redis:6379
+      BACKEND_INTERNAL_URL: http://backend:3000
+    volumes:
+      - ../worker/src:/app/src
+      - ../worker/tests:/app/tests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   codetrace_postgres_data:
   codetrace_redis_data:

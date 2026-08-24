@@ -1,13 +1,21 @@
-# CodeTrace backend — dev image. Full deps (incl. dev tooling), expects
-# infra/docker-compose.single-vm.yml's dev-override or a direct bind
-# mount of backend/src for live reload — mirrors worker/Dockerfile.dev's
-# shape (dev iteration speed over image size).
+# CodeTrace backend — dev image. Full deps (incl. dev tooling). Used by
+# infra/docker-compose.dev.yml, which bind-mounts backend/src over this
+# image for live reload — mirrors worker/Dockerfile.dev's shape (dev
+# iteration speed over image size).
 
 FROM node:22-slim
 
 WORKDIR /build
 COPY . .
 RUN npm ci
+
+# npm ci alone doesn't generate the Prisma client (no postinstall hook) —
+# without this, backend/src/database/client.ts's `import { PrismaClient }
+# from "@prisma/client"` fails at runtime with "does not provide an
+# export named 'PrismaClient'". Only needs the schema file, not a live
+# DB connection — the dummy DATABASE_URL just satisfies
+# prisma.config.ts's env() call during generation.
+RUN DATABASE_URL=postgresql://dummy npm run prisma:generate --workspace=backend
 
 WORKDIR /build/backend
 
