@@ -1,4 +1,5 @@
 import os
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,7 @@ def test_next_key_round_robins_across_configured_pool() -> None:
     embedder_module._key_cycle_pool = None
 
     class FakeSettings:
-        gemini_api_key_pool = ["key-a", "key-b", "key-c"]
+        gemini_api_key_pool: ClassVar[list[str]] = ["key-a", "key-b", "key-c"]
 
     with patch("src.embedding.embedder.get_settings", return_value=FakeSettings()):
         keys = [embedder_module._next_key() for _ in range(7)]

@@ -1,4 +1,5 @@
 import pytest
+
 from src.embedding.pricing import estimate_embedding_cost_usd
 
 

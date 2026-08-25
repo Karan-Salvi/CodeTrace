@@ -37,6 +37,14 @@ def test_gemini_api_key_pool_dedupes_and_preserves_order(monkeypatch: MonkeyPatc
 
 
 def test_gemini_api_key_pool_defaults_to_single_key(monkeypatch: MonkeyPatch) -> None:
+    # env_file=".env" (src/config.py) is a separate pydantic-settings source
+    # from os.environ — delenv() only removes the var from os.environ, so a
+    # real GEMINI_API_KEYS_EXTRA in a developer's worker/.env still leaks in
+    # through the dotenv source and this assertion fails locally even though
+    # CI (no worker/.env checked out) passes. Disable the file source
+    # entirely, same pattern as test_settings_raises_on_missing_required_var
+    # below, so this test is isolated from whatever .env happens to exist.
+    monkeypatch.setattr("src.config.Settings.model_config", {"env_file": None, "extra": "ignore"})
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5433/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6380")
     monkeypatch.setenv("BACKEND_INTERNAL_URL", "http://localhost:3000")

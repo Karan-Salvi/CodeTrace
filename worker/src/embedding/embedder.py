@@ -1,5 +1,5 @@
 import itertools
-from typing import Iterator
+from collections.abc import Iterator
 
 from google import genai
 from google.genai import types
