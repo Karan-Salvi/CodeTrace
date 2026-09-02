@@ -338,7 +338,7 @@ jobs:
               echo "==> First deploy on this VM: no TLS cert volume yet."
               echo "==> Starting everything except nginx, running migrations, then stopping here."
               docker compose --env-file infra/env/.env.docker -f infra/docker-compose.single-vm.yml up -d --build postgres redis backend worker frontend
-              ./scripts/migrate.sh
+              bash scripts/migrate.sh
               echo "==> Now run manually, once, before this pipeline can go further:"
               echo "    DOMAIN=${{ vars.DEPLOY_DOMAIN }} EMAIL=you@example.com ./scripts/init-tls.sh"
               echo "    DOMAIN=${{ vars.DEPLOY_DOMAIN }} ./scripts/render-nginx-config.sh"
@@ -350,7 +350,7 @@ jobs:
             docker compose --env-file infra/env/.env.docker -f infra/docker-compose.single-vm.yml up -d --build
 
             echo "==> Running migrations..."
-            ./scripts/migrate.sh
+            bash scripts/migrate.sh
 
             echo "==> Health check..."
             for i in $(seq 1 30); do
