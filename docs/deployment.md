@@ -62,6 +62,14 @@ so the very first deploy on a fresh VM must obtain the certificate
 5. `./scripts/migrate.sh`
 6. Verify: `curl -sf https://your.domain/health`
 
+**If using CD** (`.github/workflows/ci.yml`'s `deploy` job): the first push
+to `main` after the VM/secrets are set up does steps 1 and 5 for you
+automatically (it clones the repo if `DEPLOY_PATH` is empty, starts
+everything except nginx, runs migrations), then stops with the exact
+commands for steps 2-4 instead of guessing at DNS/cert timing on your
+behalf. Run those 3 manually, once — every push after that is fully
+automatic.
+
 Every deploy after the first only needs steps 3-6 (cert already exists,
 nginx can start normally) — plus a cron job running
 `./scripts/renew-tls.sh` periodically (see that script's own header

@@ -201,15 +201,23 @@ jobs:
   # succeeding; the `if` restricts it to real pushes to main (never PRs,
   # and never re-runs on a PR's own push event).
   #
-  # SSHes into the already-provisioned VM and runs the same idempotent
-  # redeploy sequence documented in docs/deployment.md — git reset to
-  # origin/main, rebuild the services that changed, run migrations
-  # (scripts/migrate.sh, safe to run every time — a no-op when nothing's
-  # pending), then a real health check as the actual pass/fail gate, not
-  # just "docker started". Does NOT re-run TLS bootstrap
-  # (scripts/init-tls.sh / render-nginx-config.sh) — the cert and rendered
-  # nginx config already exist on the VM from the one-time first-deploy
-  # sequence and don't need regenerating on every push.
+  # SSHes into the already-provisioned VM (Docker + git + gettext-base +
+  # cron + openssl already installed, per docs/deployment.md) and runs the
+  # idempotent redeploy sequence — clones the repo to DEPLOY_PATH if it's
+  # not there yet, git reset to origin/main, rebuild the services that
+  # changed, run migrations (scripts/migrate.sh, safe to run every time —
+  # a no-op when nothing's pending), then a real health check as the
+  # actual pass/fail gate, not just "docker started".
+  #
+  # Deliberately does NOT auto-run TLS bootstrap (scripts/init-tls.sh /
+  # render-nginx-config.sh) even on a fresh clone: cert issuance needs
+  # port 80 free with nginx NOT running, needs DNS already resolving, and
+  # hits Let's Encrypt's real rate-limited servers — unsafe to retry
+  # automatically from a push-triggered job. A genuinely fresh VM (no
+  # codetrace_certbot_certs volume yet) gets everything except nginx
+  # started and migrated, then this job stops with instructions instead of
+  # blind-starting nginx (which would just crash — its config needs cert
+  # files that don't exist yet).
   #
   # Required repo configuration (Settings -> Secrets and variables ->
   # Actions), none of which exist yet — this job cannot run until they're
@@ -220,8 +228,9 @@ jobs:
   #     DEPLOY_SSH_KEY    - private key for that user (matching public key
   #                         in the VM's ~/.ssh/authorized_keys)
   #   Variables:
-  #     DEPLOY_PATH       - absolute path to the cloned repo on the VM
-  #                         (e.g. /home/deploy/CodeTrace)
+  #     DEPLOY_PATH       - absolute path where the repo should live on
+  #                         the VM (e.g. /home/deploy/CodeTrace) — cloned
+  #                         automatically here if not already present
   #     DEPLOY_DOMAIN     - the real domain (e.g. codetrace.example.com),
   #                         used only for the post-deploy health check
   deploy:
@@ -237,11 +246,37 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
+
+            if [ ! -d "${{ vars.DEPLOY_PATH }}/.git" ]; then
+              echo "==> No clone at ${{ vars.DEPLOY_PATH }} yet — cloning..."
+              git clone https://github.com/${{ github.repository }}.git "${{ vars.DEPLOY_PATH }}"
+            fi
             cd "${{ vars.DEPLOY_PATH }}"
 
             echo "==> Pulling latest main..."
             git fetch origin main
             git reset --hard origin/main
+
+            # TLS cert issuance (scripts/init-tls.sh) can't be safely
+            # automated here: it needs port 80 free with nginx NOT running,
+            # needs DNS already resolving, and hits Let's Encrypt's real
+            # (rate-limited) servers — a bad automated retry here can get
+            # the domain temporarily blocked. So a genuinely fresh VM (no
+            # cert volume yet) gets everything EXCEPT nginx started and
+            # migrated, then this job stops with clear instructions —
+            # never blind-starts nginx, which would just crash anyway
+            # (its config requires cert files that don't exist yet).
+            if ! docker volume inspect codetrace_certbot_certs >/dev/null 2>&1; then
+              echo "==> First deploy on this VM: no TLS cert volume yet."
+              echo "==> Starting everything except nginx, running migrations, then stopping here."
+              docker compose -f infra/docker-compose.single-vm.yml up -d --build postgres redis backend worker frontend
+              ./scripts/migrate.sh
+              echo "==> Now run manually, once, before this pipeline can go further:"
+              echo "    DOMAIN=${{ vars.DEPLOY_DOMAIN }} EMAIL=you@example.com ./scripts/init-tls.sh"
+              echo "    DOMAIN=${{ vars.DEPLOY_DOMAIN }} ./scripts/render-nginx-config.sh"
+              echo "    docker compose -f infra/docker-compose.single-vm.yml up -d nginx"
+              exit 1
+            fi
 
             echo "==> Rebuilding and restarting changed services..."
             docker compose -f infra/docker-compose.single-vm.yml up -d --build
