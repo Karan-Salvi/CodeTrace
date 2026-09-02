@@ -48,6 +48,25 @@ No hostnames are ever hardcoded (`redis`, `postgres`) — always read from
 environment variables. This is what makes the single-VM → split-VM path a
 configuration change rather than a rewrite.
 
+## First deploy on a fresh VM (TLS bootstrap order matters)
+
+nginx's config requires real cert files to exist before it can start —
+so the very first deploy on a fresh VM must obtain the certificate
+*before* the nginx service ever runs:
+
+1. `docker compose -f infra/docker-compose.single-vm.yml up -d postgres redis backend worker frontend`
+   (everything except nginx — port 80 must stay free for the next step)
+2. `DOMAIN=your.domain EMAIL=you@example.com ./scripts/init-tls.sh`
+3. `DOMAIN=your.domain ./scripts/render-nginx-config.sh`
+4. `docker compose -f infra/docker-compose.single-vm.yml up -d nginx`
+5. `./scripts/migrate.sh`
+6. Verify: `curl -sf https://your.domain/health`
+
+Every deploy after the first only needs steps 3-6 (cert already exists,
+nginx can start normally) — plus a cron job running
+`./scripts/renew-tls.sh` periodically (see that script's own header
+comment for a ready-to-use crontab line).
+
 ## Why this matters for future scaling
 
 `infra/` also ships (currently unused) `docker-compose.backend.yml` and
