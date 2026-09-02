@@ -191,7 +191,9 @@ jobs:
       REDIS_URL: redis://localhost:6379
       BACKEND_INTERNAL_URL: http://localhost:3000
       INTERNAL_API_SECRET: ci-dummy-internal-secret-16-chars-min
-      GEMINI_API_KEY: ci-dummy-gemini-key
+      # Real key, not a dummy — tests/embedding/test_embedder.py's
+      # @requires_gemini_key tests call the real embedding API.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       EMBEDDING_MODEL_VERSION: gemini-embedding-001-1536
 
     steps:
