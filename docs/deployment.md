@@ -124,7 +124,8 @@ merge to main
     v
 Docker build
     v
-Deploy (deploy-backend.yml / deploy-worker.yml — same target for now)
+Deploy (not yet implemented — no CD workflow file exists; deploys are the
+manual sequence documented above under "First deploy on a fresh VM")
     v
 Health check
 ```
