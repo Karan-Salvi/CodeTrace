@@ -83,15 +83,14 @@ jobs:
         run: npm run lint --workspace=frontend
 
       # Two-pass deploy: the CONCURRENTLY migrations (fts_split_*) can't run
-      # inside a transaction — Postgres enforces this unconditionally, but
-      # whether `prisma migrate deploy` actually wraps a given migration in
-      # one has been observed to vary by platform (see
-      # backend/scripts/apply-concurrent-migrations.ts's header comment) —
-      # this initial pass may fail on the first CONCURRENTLY migration, or
-      # may succeed outright; continue-on-error covers the failing case
-      # without breaking the succeeding one. If migrations 1-5 fail for an
-      # unrelated reason, the next step (which needs the base schema
-      # already in place) fails for real and stops the job anyway.
+      # inside a transaction — Postgres enforces this unconditionally, and
+      # this reliably fails against the real production image (confirmed
+      # with a real `docker run` — see
+      # backend/scripts/apply-concurrent-migrations.ts's header comment).
+      # continue-on-error lets the job proceed to the manual-apply step
+      # instead of stopping here. If migrations 1-5 fail for an unrelated
+      # reason, the next step (which needs the base schema already in
+      # place) fails for real and stops the job anyway.
       - name: Run backend migrations (initial pass)
         working-directory: backend
         run: npx prisma migrate deploy

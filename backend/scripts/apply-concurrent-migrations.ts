@@ -2,25 +2,21 @@
 //
 // CREATE/DROP/REINDEX INDEX CONCURRENTLY cannot run inside a transaction
 // block — Postgres enforces this server-side, unconditionally
-// (PreventInTransactionBlock). Whether `prisma migrate deploy` actually
-// wraps a given migration file in a transaction has been observed to
-// depend on the platform: reliably fails with "cannot run inside a
-// transaction block" when run from a Windows host against this project's
-// two CONCURRENTLY migrations, but succeeded outright (no error) when run
-// via `docker compose exec` against the Linux backend image — same
-// Prisma/schema-engine version and hash on both, so this looks like a
-// genuine platform difference in the compiled engine, not a version
-// difference. Real CI/prod both run Linux, so a plain `migrate deploy`
-// may already just work there — but that's only confirmed for this
-// project's dev Docker image, not the exact CI runner or production
-// image, so this script (and the two-pass sequence around it in ci.yml /
-// migrate.sh) stays as a safety net either way: it applies migrations
-// manually (one pg.Client.query() call per statement — each call is its
-// own autocommit transaction, never batched into one multi-statement
-// message) and records them as applied via `prisma migrate resolve
-// --applied`, so a normal `migrate deploy` afterward sees them as already
-// done and skips them — whether or not that migrate deploy would have
-// succeeded on its own.
+// (PreventInTransactionBlock). Confirmed with a real `docker run` against
+// the real production image (backend/Dockerfile): `prisma migrate deploy`
+// reliably fails with "cannot run inside a transaction block" on the
+// first CONCURRENTLY migration, same as from a Windows host. (One earlier
+// test against backend/Dockerfile.dev's dev container succeeded outright
+// with no error — same Prisma/schema-engine version and the same openssl
+// fallback warning as the production image, so whatever caused that
+// isn't simply "Linux vs Windows" or an engine-binary difference; the
+// cause wasn't tracked down further, and doesn't matter — what matters is
+// the REAL deploy artifact reliably needs this.) This script applies
+// migrations manually (one pg.Client.query() call per statement — each
+// call is its own autocommit transaction, never batched into one
+// multi-statement message) and records them as applied via
+// `prisma migrate resolve --applied`, so a normal `migrate deploy`
+// afterward sees them as already done and skips them.
 //
 // Run with: npx tsx backend/scripts/apply-concurrent-migrations.ts
 // Safe to run any time — a no-op if the listed migrations are already applied.
@@ -28,12 +24,20 @@
 import "dotenv/config";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { Client } from "pg";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, "..", "prisma", "migrations");
+// process.cwd(), not __dirname: this script is compiled by tsc into
+// dist/scripts/apply-concurrent-migrations.js for production (tsc
+// preserves the scripts/ subdirectory under dist/), so __dirname-relative
+// paths would resolve one level wrong there (dist/prisma/migrations
+// instead of the real prisma/migrations, which lives at the backend
+// package root, a sibling of dist/ — not nested inside it). cwd is stable
+// across both dev (tsx runs the source in place, WORKDIR is the backend
+// root) and production (WORKDIR is /app, also the backend root) — always
+// run this from the backend package root, matching how migrate.sh and
+// `npx prisma migrate deploy` are both invoked.
+const MIGRATIONS_DIR = join(process.cwd(), "prisma", "migrations");
 
 // Every migration that uses CONCURRENTLY DDL — add new names here as they're written.
 const CONCURRENT_MIGRATIONS = ["20260824180000_fts_split_identifier_words", "20260824180500_fts_split_acronym_boundary"];
@@ -83,8 +87,9 @@ async function main() {
       }
 
       console.log(`${name}: applied. Marking as resolved in Prisma's migration history...`);
+      // No explicit cwd: inherits process.cwd(), same backend-root
+      // assumption as MIGRATIONS_DIR above.
       execSync(`npx prisma migrate resolve --applied "${name}"`, {
-        cwd: join(__dirname, ".."),
         stdio: "inherit",
         env: process.env,
       });

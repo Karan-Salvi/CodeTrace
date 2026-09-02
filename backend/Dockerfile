@@ -33,6 +33,25 @@ COPY --from=builder /build/shared/types/package.json ./node_modules/@codetrace/s
 COPY --from=builder /build/backend/dist ./dist
 COPY --from=builder /build/backend/package.json ./package.json
 
+# scripts/migrate.sh and CI both run `prisma migrate deploy` /
+# `apply-concurrent-migrations.ts` INSIDE this container — both need
+# prisma.config.ts + prisma/schema.prisma + prisma/migrations present at
+# runtime, not just baked into the (discarded) builder stage. Without
+# this, `prisma migrate deploy` fails outright in the real container
+# ("Could not find Prisma Schema") — confirmed by a real `docker run`
+# against this image before this fix existed.
+COPY --from=builder /build/backend/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /build/backend/prisma/schema.prisma ./prisma/schema.prisma
+COPY --from=builder /build/backend/prisma/migrations ./prisma/migrations
+
+# scripts/migrate.sh runs `npx tsx scripts/apply-concurrent-migrations.ts`
+# (raw TypeScript, not compiled) so the SAME command works identically in
+# both this image and backend/Dockerfile.dev's bind-mounted dev container
+# — copying just this one script (not the rest of scripts/, which has
+# dev-only fixtures/tests unrelated to production) avoids migrate.sh
+# needing environment-specific branching logic.
+COPY --from=builder /build/backend/scripts/apply-concurrent-migrations.ts ./scripts/apply-concurrent-migrations.ts
+
 USER backend
 
 ENV NODE_ENV=production

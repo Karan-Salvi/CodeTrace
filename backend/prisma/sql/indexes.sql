@@ -45,11 +45,10 @@ $$;
 -- migrations/20260824180000_fts_split_identifier_words/migration.sql does.
 --
 -- CONCURRENTLY: Postgres never allows this inside a transaction block,
--- but whether `prisma migrate deploy` wraps a given migration in one has
--- been observed to vary by platform — see
+-- and this reliably fails against the real production image (confirmed
+-- with a real `docker run` — see
 -- backend/scripts/apply-concurrent-migrations.ts's header comment for the
--- full story. Run that script (safe/idempotent either way) rather than
--- assuming plain `prisma migrate deploy` will or won't work on a given host.
+-- full story). Run that script instead of plain `prisma migrate deploy`.
 DROP INDEX CONCURRENTLY IF EXISTS chunks_fts_idx;
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS chunks_fts_idx ON chunks

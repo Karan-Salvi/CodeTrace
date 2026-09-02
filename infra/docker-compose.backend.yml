@@ -57,8 +57,11 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.rendered.conf:/etc/nginx/nginx.conf:ro
+      - codetrace_certbot_certs:/etc/letsencrypt:ro
+      - codetrace_certbot_webroot:/var/www/certbot:ro
     depends_on:
       - backend
       - frontend
@@ -66,3 +69,7 @@ services:
 volumes:
   codetrace_postgres_data:
   codetrace_redis_data:
+  codetrace_certbot_certs:
+    external: true
+  codetrace_certbot_webroot:
+    external: true
