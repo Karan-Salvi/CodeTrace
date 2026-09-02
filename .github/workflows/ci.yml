@@ -67,6 +67,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Prisma 7 dropped the postinstall auto-generate — @prisma/client
+      # ships with no generated code until this runs explicitly, which
+      # every backend test importing prisma/client.js needs.
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
       - name: Create test database
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
