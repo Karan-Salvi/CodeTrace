@@ -71,6 +71,7 @@ worker/repo-clones/
 
 docker-compose.override.yml
 infra/docker-compose.override.yml
+infra/nginx/nginx.prod.rendered.conf
 *.pid
 
 logs/
