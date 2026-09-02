@@ -69,6 +69,8 @@ worker/tmp/
 worker/repo-clones/
 *.repo-clone/
 
+/backups/
+
 docker-compose.override.yml
 infra/docker-compose.override.yml
 infra/nginx/nginx.prod.rendered.conf

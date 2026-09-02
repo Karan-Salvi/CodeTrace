@@ -67,6 +67,26 @@ nginx can start normally) — plus a cron job running
 `./scripts/renew-tls.sh` periodically (see that script's own header
 comment for a ready-to-use crontab line).
 
+## Backups
+
+The single VM has no redundancy — a disk failure loses every repo,
+chunk, embedding, and PR review permanently unless backed up elsewhere.
+`./scripts/backup-db.sh` dumps Postgres (gzip-compressed, timestamped)
+into a local `backups/` directory and prunes anything older than
+`RETENTION_DAYS` (default 14) — wire it into cron (see the script's own
+header comment for a ready-to-use crontab line). `backups/` is gitignored
+and local-only; copying dumps off the VM (S3, rsync to another host,
+etc.) is a natural next step once a storage target is picked, not built
+here.
+
+`./scripts/restore-db.sh <backup-file> [compose-file]` restores one —
+destructive (drops and recreates the `codetrace` database), so it
+requires an explicit `CONFIRM=yes` on top of the backup-file argument.
+Re-run `./scripts/migrate.sh` after restoring to be safe. Both scripts
+were verified end to end against a real dump of real data (backup →
+restore into a throwaway database → row counts and the `vector` extension
+both confirmed identical to the source) before being trusted here.
+
 ## Why this matters for future scaling
 
 `infra/` also ships (currently unused) `docker-compose.backend.yml` and
