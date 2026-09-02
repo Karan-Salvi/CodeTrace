@@ -48,14 +48,49 @@ jobs:
       GITHUB_CLIENT_SECRET: ci-dummy-client-secret
       GITHUB_APP_ID: "000000"
       GITHUB_APP_SLUG: ci-dummy-app-slug
+      # A real (but throwaway, CI-only) RSA keypair — not the fake text
+      # placeholder this used to be. jsonwebtoken's RS256 signer parses the
+      # PEM structurally before it ever gets to signing, so a syntactically
+      # invalid "key" throws "secretOrPrivateKey must be an asymmetric key"
+      # for every test that exercises signAppJwt (github-app.service.ts),
+      # even though nothing here talks to a real GitHub App.
       GITHUB_APP_PRIVATE_KEY: |
         -----BEGIN RSA PRIVATE KEY-----
-        ci-dummy-not-a-real-key
+        MIIEpQIBAAKCAQEAvv1XvqXKJ6N2jH11Q86CzS0nNwxQaNnFZLCWv4OKRrxa0NUk
+        dgBp+l/s/no+CDDyL800UproiMEADVAsk+E4JeRELLEW+YtMIOYu7on6E3oglAig
+        Eo/pXtWI8VP1jzHiL3sa96rfF5dlQz7TWdzQ/MrQCPp9UHSBr4JBxHNv3cDe8cWd
+        ogCS4860wqOeNKnRjjgm7BBR2INgxSfCxg3Pje0ZoJRaVxx59uvgsMqNHhwEiJzz
+        dVF4mrikq9veusBVUFKTBSb+D9KLqbip7ikPUEqk0qLnUEy66jFPzwIiTLgcj6x+
+        mvg2C5XxtOOzx9MATzJvL0dGp7aVvluOcSJbsQIDAQABAoIBAEkvuKOAUWZ+H6v3
+        WWvJ41qvXlMcX2XGaXtLpgCubdrsS5qxyn6Daxj8EEt12XZ3Fx9VMaMj5E6fMp9n
+        ZSWnzMXMYomDtOucQuhqfHqBGfjDuF8xrPFf/0wNZKQhibw9H9EVCgD1E/cs1yt9
+        FC1fzh/Isg52unWNp7JzJjObDrd5CZqdQMhzWmnd45l0XDsM3JqXe7skHDDZ1+Si
+        ZA9mon8Eb0lYvtqj8FB66nIk9yNLPpccBgx6VLHH3YBQiXv3kSB1hepThQJgA2FC
+        fkpuRJHKS/LziltVggnOIF7+tAZ+vECel1YaakEqxIlEjYnukVP3unxzR7YjON0k
+        yGwEMncCgYEA/LqFXADfBK9ExmUUZhO7C/W1ec/AsIT/PxpxfMgZxE95Y2TWD/dt
+        sc9ZN9+I7/j3fagw2+IiI6VwCSXjbI3+8S3XHgcQoK4ifozWiLCRzFSTo0XytPYP
+        F5iHLbuhhIjNnvpnw4ceoO7Px/CpN50xSnaA5lxewcRnJIlLxliW0b8CgYEAwXY7
+        /xZ8IhfuoAIHyzWrvx+KakD5cakp1pCZD7KAowL465g5vAO3lFnV9YoyYF9hb35l
+        9C/7F6bnS5419PsI+HKuCNAuPCvpFmwIpCYs3/iXg+TmVRgPNkNtaEYE4K9fezrU
+        1bJLIG3cG7BJ48P1ngdJ1Y90JqnB20TqnqfFTo8CgYEAldzM48eod5CvCa46sGUW
+        z3q+SCNHseTLrtGxZjsJ/HzcEHJk9UbVh1DbKOSmwRYzPBIWFu07LUQW8XXELETv
+        Xni+TRIHbCCWV9CQDrIVYsLsYS9DQsd+H5HU5uuSVZMByznVef6PzQKPt5If5diS
+        uAMZYIB5uBEM0H+RrWYu2OUCgYEAm35vnIiy/ygjKMJZB1C9GSG9u8c7dsqTkRyp
+        mX9MezkRXzL7/I00SW2nVfJcqS8gfl+mjIzgEVOaBiJElgILZL2v+e9xqfVVJCtz
+        CpSQbvg8t8sMAosS9vddAXl9xCXQ5ZgUpynlzkvepPadfQ7s5LZQ9vCVV9oLsTSE
+        Kz8HjCsCgYEAr7wXKCBxZsqt0XvQQ+MoWGZ5pgw3UL2XPrpko3FIPGdOYRE0PR9l
+        H4J1ujNXwT/eNIP5ciyKjMDstHSZhtgs3/7/cGy9ALP8mgHyPCG+It0ef5F7Qj8p
+        pPh/2EMLxpaSctRy/oNQvUHgw/x3C+uFsY/0YFk8jGfazZxEWVQJCGA=
         -----END RSA PRIVATE KEY-----
       GITHUB_WEBHOOK_SECRET: ci-dummy-webhook-secret
       JINA_API_KEY: ci-dummy-jina-key
       EMBEDDING_MODEL_VERSION: gemini-embedding-001-1536
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # gemini-2.5-flash was deprecated ("no longer available to new
+      # users") — env.ts's default still points at it for existing prod
+      # keys where it may still work, but this CI key gets a hard 404 on
+      # it, so override explicitly here.
+      GEMINI_CHAT_MODEL: gemini-3.6-flash
 
     steps:
       - uses: actions/checkout@v4
