@@ -213,6 +213,36 @@ jobs:
           PGPASSWORD=codetrace_ci_password psql -h localhost -U codetrace -d codetrace \
             -c "CREATE DATABASE codetrace_test"
 
+      # Schema is backend-owned (CLAUDE.md: worker only reads/writes, never
+      # migrates) — but worker's own tests hit real tables (repositories,
+      # users, chunks) against this same codetrace_test database, so the
+      # backend's migrations still need to run here once, same two-pass
+      # approach as the js job (CONCURRENTLY migrations can't run inside
+      # Prisma's transaction).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run backend migrations (initial pass)
+        working-directory: backend
+        run: npx prisma migrate deploy
+        continue-on-error: true
+
+      - name: Apply CONCURRENTLY index migrations
+        working-directory: backend
+        run: npx tsx scripts/apply-concurrent-migrations.ts
+
+      - name: Run backend migrations (final)
+        working-directory: backend
+        run: npx prisma migrate deploy
+
       - name: Lint (ruff)
         working-directory: worker
         run: ruff check .
