@@ -44,11 +44,12 @@ $$;
 -- against the DB"), so it must actually replace the index, same as
 -- migrations/20260824180000_fts_split_identifier_words/migration.sql does.
 --
--- CONCURRENTLY: cannot run inside a transaction block, so this can NOT be
--- applied via plain `prisma migrate deploy` (which wraps every migration
--- in one) — use backend/scripts/apply-concurrent-migrations.ts instead,
--- which runs each statement as its own autocommit query, then records the
--- migration as applied via `prisma migrate resolve --applied`.
+-- CONCURRENTLY: Postgres never allows this inside a transaction block,
+-- but whether `prisma migrate deploy` wraps a given migration in one has
+-- been observed to vary by platform — see
+-- backend/scripts/apply-concurrent-migrations.ts's header comment for the
+-- full story. Run that script (safe/idempotent either way) rather than
+-- assuming plain `prisma migrate deploy` will or won't work on a given host.
 DROP INDEX CONCURRENTLY IF EXISTS chunks_fts_idx;
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS chunks_fts_idx ON chunks

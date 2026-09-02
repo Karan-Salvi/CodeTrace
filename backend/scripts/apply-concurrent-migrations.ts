@@ -1,17 +1,29 @@
 // backend/scripts/apply-concurrent-migrations.ts
 //
 // CREATE/DROP/REINDEX INDEX CONCURRENTLY cannot run inside a transaction
-// block, but `prisma migrate deploy` unconditionally wraps every
-// migration file in one — so any migration using CONCURRENTLY can never
-// be applied via plain `prisma migrate deploy`. This script applies such
-// migrations manually (one pg.Client.query() call per statement — each
-// call is its own autocommit transaction, never batched into one
-// multi-statement message) and then records them as applied via
-// `prisma migrate resolve --applied`, so the normal `migrate deploy` step
-// that runs afterward sees them as already done and skips them.
+// block — Postgres enforces this server-side, unconditionally
+// (PreventInTransactionBlock). Whether `prisma migrate deploy` actually
+// wraps a given migration file in a transaction has been observed to
+// depend on the platform: reliably fails with "cannot run inside a
+// transaction block" when run from a Windows host against this project's
+// two CONCURRENTLY migrations, but succeeded outright (no error) when run
+// via `docker compose exec` against the Linux backend image — same
+// Prisma/schema-engine version and hash on both, so this looks like a
+// genuine platform difference in the compiled engine, not a version
+// difference. Real CI/prod both run Linux, so a plain `migrate deploy`
+// may already just work there — but that's only confirmed for this
+// project's dev Docker image, not the exact CI runner or production
+// image, so this script (and the two-pass sequence around it in ci.yml /
+// migrate.sh) stays as a safety net either way: it applies migrations
+// manually (one pg.Client.query() call per statement — each call is its
+// own autocommit transaction, never batched into one multi-statement
+// message) and records them as applied via `prisma migrate resolve
+// --applied`, so a normal `migrate deploy` afterward sees them as already
+// done and skips them — whether or not that migrate deploy would have
+// succeeded on its own.
 //
 // Run with: npx tsx backend/scripts/apply-concurrent-migrations.ts
-// Must run BEFORE `prisma migrate deploy` in any environment.
+// Safe to run any time — a no-op if the listed migrations are already applied.
 
 import "dotenv/config";
 import { execSync } from "node:child_process";
