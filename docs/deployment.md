@@ -86,11 +86,15 @@ nginx's config requires real cert files to exist before it can start —
 so the very first deploy on a fresh VM must obtain the certificate
 *before* the nginx service ever runs:
 
-1. `docker compose -f infra/docker-compose.single-vm.yml up -d postgres redis backend worker frontend`
-   (everything except nginx — port 80 must stay free for the next step)
+1. `docker compose --env-file infra/env/.env.docker -f infra/docker-compose.single-vm.yml up -d postgres redis backend worker frontend`
+   (everything except nginx — port 80 must stay free for the next step;
+   `--env-file` is required — compose doesn't auto-discover
+   `infra/env/.env.docker` since it isn't a bare `.env` in the invocation's
+   cwd, and without it `${POSTGRES_PASSWORD}`/`${REDIS_PASSWORD}` resolve
+   empty, which crashes postgres before it can become healthy)
 2. `DOMAIN=your.domain EMAIL=you@example.com ./scripts/init-tls.sh`
 3. `DOMAIN=your.domain ./scripts/render-nginx-config.sh`
-4. `docker compose -f infra/docker-compose.single-vm.yml up -d nginx`
+4. `docker compose --env-file infra/env/.env.docker -f infra/docker-compose.single-vm.yml up -d nginx`
 5. `./scripts/migrate.sh`
 6. Verify: `curl -sf https://your.domain/health`
 
