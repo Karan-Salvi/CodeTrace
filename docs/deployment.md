@@ -48,6 +48,38 @@ No hostnames are ever hardcoded (`redis`, `postgres`) — always read from
 environment variables. This is what makes the single-VM → split-VM path a
 configuration change rather than a rewrite.
 
+## Repo access on the VM (deploy key)
+
+Works the same whether the repo is public or private — set up once,
+before the first clone:
+
+1. On the VM, generate a dedicated keypair (no passphrase, so CD's
+   unattended `git fetch` doesn't hang prompting for one):
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/codetrace_deploy_key -N ""
+   cat ~/.ssh/codetrace_deploy_key.pub
+   ```
+2. GitHub repo → Settings → Deploy keys → Add deploy key. Paste the
+   public key. Leave "Allow write access" **unchecked** — this key only
+   ever needs to read (`git clone`/`git fetch`), never push.
+3. Tell the VM's SSH client to use this key for GitHub, in
+   `~/.ssh/config`:
+   ```
+   Host github.com
+     IdentityFile ~/.ssh/codetrace_deploy_key
+     IdentitiesOnly yes
+   ```
+4. Verify: `ssh -T git@github.com` should greet you by the repo's name/owner, not ask for a password.
+5. Clone with the SSH URL (not HTTPS — HTTPS won't use this key):
+   ```bash
+   git clone git@github.com:Karan-Salvi/CodeTrace.git
+   ```
+
+The CD job (`.github/workflows/ci.yml`'s `deploy` job) auto-clones with
+the same SSH URL if `DEPLOY_PATH` is empty — it relies on this same key
+already being set up on the VM per steps 1-4 above; it does not (and
+cannot) do this setup for you.
+
 ## First deploy on a fresh VM (TLS bootstrap order matters)
 
 nginx's config requires real cert files to exist before it can start —

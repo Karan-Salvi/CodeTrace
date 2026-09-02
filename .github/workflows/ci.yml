@@ -249,7 +249,13 @@ jobs:
 
             if [ ! -d "${{ vars.DEPLOY_PATH }}/.git" ]; then
               echo "==> No clone at ${{ vars.DEPLOY_PATH }} yet — cloning..."
-              git clone https://github.com/${{ github.repository }}.git "${{ vars.DEPLOY_PATH }}"
+              # SSH URL, not HTTPS: works identically whether the repo is
+              # public or private, via a read-only deploy key already
+              # installed on the VM (docs/deployment.md) — GITHUB_TOKEN
+              # would expire when this job ends and get baked into
+              # .git/config, breaking every future `git fetch` after this
+              # one run, so it's deliberately not used here.
+              git clone git@github.com:${{ github.repository }}.git "${{ vars.DEPLOY_PATH }}"
             fi
             cd "${{ vars.DEPLOY_PATH }}"
 
