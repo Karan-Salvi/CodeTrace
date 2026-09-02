@@ -120,15 +120,25 @@ Retrieval eval (smoke-test config, not full benchmark)
     v
 Build
 
-merge to main
+push to main, in the SAME workflow run (.github/workflows/ci.yml's
+`deploy` job, `needs: [js, worker]` — one pipeline, not a second
+workflow_run-linked file; never runs on a PR)
     v
-Docker build
+Deploy: SSH into the VM, git pull, `docker compose up -d --build` rebuilds
+images ON the VM directly — no separate registry/push step for this
+single-VM MVP
     v
-Deploy (not yet implemented — no CD workflow file exists; deploys are the
-manual sequence documented above under "First deploy on a fresh VM")
+scripts/migrate.sh
     v
-Health check
+Health check (the deploy job's actual pass/fail gate, not just "the
+containers started")
 ```
+
+Requires these set in the repo (Settings -> Secrets and variables ->
+Actions) before the `deploy` job can run at all — none exist by default:
+- Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
+- Variables: `DEPLOY_PATH` (absolute path to the cloned repo on the VM),
+  `DEPLOY_DOMAIN`
 
 Build order matters: `shared/types` must build/type-check before `backend`
 or `frontend`, since both depend on it — enforced as explicit sequential

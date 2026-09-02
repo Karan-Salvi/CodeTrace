@@ -194,3 +194,68 @@ jobs:
       - name: Test
         working-directory: worker
         run: pytest
+
+  # CD, in the same pipeline as CI rather than a separate workflow_run-linked
+  # file — one run shows lint/test/deploy together instead of two opaque
+  # linked runs. `needs: [js, worker]` gates this on BOTH CI jobs actually
+  # succeeding; the `if` restricts it to real pushes to main (never PRs,
+  # and never re-runs on a PR's own push event).
+  #
+  # SSHes into the already-provisioned VM and runs the same idempotent
+  # redeploy sequence documented in docs/deployment.md — git reset to
+  # origin/main, rebuild the services that changed, run migrations
+  # (scripts/migrate.sh, safe to run every time — a no-op when nothing's
+  # pending), then a real health check as the actual pass/fail gate, not
+  # just "docker started". Does NOT re-run TLS bootstrap
+  # (scripts/init-tls.sh / render-nginx-config.sh) — the cert and rendered
+  # nginx config already exist on the VM from the one-time first-deploy
+  # sequence and don't need regenerating on every push.
+  #
+  # Required repo configuration (Settings -> Secrets and variables ->
+  # Actions), none of which exist yet — this job cannot run until they're
+  # added:
+  #   Secrets:
+  #     DEPLOY_HOST       - VM's public IP or hostname
+  #     DEPLOY_USER       - SSH user on the VM
+  #     DEPLOY_SSH_KEY    - private key for that user (matching public key
+  #                         in the VM's ~/.ssh/authorized_keys)
+  #   Variables:
+  #     DEPLOY_PATH       - absolute path to the cloned repo on the VM
+  #                         (e.g. /home/deploy/CodeTrace)
+  #     DEPLOY_DOMAIN     - the real domain (e.g. codetrace.example.com),
+  #                         used only for the post-deploy health check
+  deploy:
+    needs: [js, worker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ vars.DEPLOY_PATH }}"
+
+            echo "==> Pulling latest main..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Rebuilding and restarting changed services..."
+            docker compose -f infra/docker-compose.single-vm.yml up -d --build
+
+            echo "==> Running migrations..."
+            ./scripts/migrate.sh
+
+            echo "==> Health check..."
+            for i in $(seq 1 30); do
+              if curl -sf "https://${{ vars.DEPLOY_DOMAIN }}/health"; then
+                echo "==> Deploy successful."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Health check failed after deploy" >&2
+            exit 1
