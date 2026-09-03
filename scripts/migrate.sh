@@ -20,14 +20,19 @@ set -euo pipefail
 # (or the full stack) — the backend container must already be running.
 
 COMPOSE_FILE="${1:-infra/docker-compose.single-vm.yml}"
+# Only needed for compose to substitute ${POSTGRES_PASSWORD} etc. when
+# parsing the file — `exec` targets an already-running container so it has
+# no functional effect here, but omitting it prints "variable not set,
+# defaulting to blank string" warnings on every invocation.
+ENV_FILE="infra/env/.env.docker"
 
 echo "==> Initial migration pass (fails on a CONCURRENTLY migration against the real production image — handled below)..."
-docker compose -f "$COMPOSE_FILE" exec -T backend npx prisma migrate deploy || true
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T backend npx prisma migrate deploy || true
 
 echo "==> Applying CONCURRENTLY index migrations..."
-docker compose -f "$COMPOSE_FILE" exec -T backend npx tsx scripts/apply-concurrent-migrations.ts
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T backend npx tsx scripts/apply-concurrent-migrations.ts
 
 echo "==> Final migration pass (must succeed)..."
-docker compose -f "$COMPOSE_FILE" exec -T backend npx prisma migrate deploy
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T backend npx prisma migrate deploy
 
 echo "==> Migrations applied."
