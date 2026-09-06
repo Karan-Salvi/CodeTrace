@@ -325,6 +325,20 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            # A container left in a broken half-recreated state (a prior
+            # deploy interrupted mid-recreate, or a manual `docker compose
+            # up` run outside this pipeline with a mismatched invocation)
+            # can leave a same-named container `up -d --build` then refuses
+            # to reuse ("Conflict: container name already in use") —
+            # confirmed the hard way, this exact failure mode blocked every
+            # subsequent automated deploy until manually cleaned up.
+            # `down --remove-orphans` before every deploy guarantees a
+            # clean slate; the brief full-stack restart this causes is an
+            # acceptable tradeoff for a single-VM MVP versus a pipeline
+            # that can wedge itself indefinitely.
+            echo "==> Cleaning up any leftover/orphaned containers before recreating..."
+            docker compose --env-file infra/env/.env.docker -f infra/docker-compose.single-vm.yml down --remove-orphans || true
+
             # TLS cert issuance (scripts/init-tls.sh) can't be safely
             # automated here: it needs port 80 free with nginx NOT running,
             # needs DNS already resolving, and hits Let's Encrypt's real
