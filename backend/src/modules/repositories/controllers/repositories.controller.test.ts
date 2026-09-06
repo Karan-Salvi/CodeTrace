@@ -198,7 +198,7 @@ describe("repositories routes", () => {
         .query({ installation_id: "999888", state: token, setup_action: "install" });
 
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain(`${env.CORS_ORIGIN}/repositories`);
+      expect(res.headers.location).toContain(`${env.CORS_ORIGIN}/install-complete`);
 
       const installation = await prisma.repositoryInstallation.findUnique({
         where: { githubInstallationId: BigInt(999888) },
