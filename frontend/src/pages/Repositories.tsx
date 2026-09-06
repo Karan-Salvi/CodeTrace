@@ -59,6 +59,7 @@ function RepositoryCardSkeleton() {
 export function Repositories() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
@@ -66,9 +67,20 @@ export function Repositories() {
     let mounted = true;
     apiFetch<Repository[]>("/repositories")
       .then((data) => {
-        if (mounted) setRepositories(data || []);
+        if (mounted) {
+          setRepositories(data || []);
+          setError(null);
+        }
       })
-      .catch((e: unknown) => console.error(e))
+      .catch((e: unknown) => {
+        // A failed fetch used to fall through to the same "No repositories
+        // connected" empty state as a genuine zero-repos account —
+        // indistinguishable to the user (and to whoever's debugging this
+        // remotely), since console.error alone requires DevTools open to
+        // ever be seen. Surface it directly in the UI instead.
+        console.error(e);
+        if (mounted) setError((e as Error).message || "Failed to load repositories");
+      })
       .finally(() => {
         if (mounted) setLoading(false);
       });
@@ -136,13 +148,19 @@ export function Repositories() {
         </div>
       )}
 
+      {error && (
+        <p className="text-error text-[14px] bg-error/10 border border-error/30 p-4 rounded-md">
+          {error}
+        </p>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
           {Array.from({ length: 4 }, (_, i) => (
             <RepositoryCardSkeleton key={i} />
           ))}
         </div>
-      ) : repositories.length === 0 ? (
+      ) : error ? null : repositories.length === 0 ? (
         <EmptyState className="border border-hairline bg-canvas">
           <EmptyStateIcon>
             <FolderGit2 className="w-8 h-8 text-mute" />
