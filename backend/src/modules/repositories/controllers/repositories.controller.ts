@@ -75,7 +75,12 @@ export async function installationCallback(req: Request, res: Response) {
     await createInstallation(payload.userId, BigInt(parsed.data.installation_id), {});
   }
 
-  res.redirect(`${env.CORS_ORIGIN}/repositories?installed=${parsed.data.setup_action}`);
+  // Deliberately NOT /repositories — that path is also a real backend
+  // JSON API endpoint (GET /repositories, bearer-token-gated), and nginx
+  // routes any /repositories* request to the backend regardless of
+  // intent, so a plain browser redirect here (no bearer token possible)
+  // always 401'd. /install-complete has no such collision.
+  res.redirect(`${env.CORS_ORIGIN}/install-complete?installed=${parsed.data.setup_action}`);
 }
 
 export async function getInstallations(req: Request, res: Response) {
