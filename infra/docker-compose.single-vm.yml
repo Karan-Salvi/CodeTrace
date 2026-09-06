@@ -69,6 +69,29 @@ services:
     # period would force-kill mid-job otherwise.
     stop_grace_period: 60s
 
+  # BullMQ consumer for the "pr-review" queue (backend/src/workers/pr-review.worker.ts)
+  # — a completely separate process from the main backend server (server.ts
+  # never starts it), same image and env as backend since it calls the
+  # same Prisma/Gemini/GitHub App code. Missing this service entirely means
+  # webhook-dispatcher.service.ts's enqueuePrReviewJob() pushes jobs onto
+  # Redis that nothing ever consumes — PRs stay stuck at "No Review"
+  # forever with no error anywhere, since there's no failure, just nobody
+  # listening.
+  pr-review-worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: ["node", "dist/src/workers/pr-review.worker.js"]
+    restart: unless-stopped
+    env_file:
+      - env/.env.backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 60s
+
   frontend:
     build:
       context: ..
