@@ -103,4 +103,22 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Scrollbar hidden globally, scrolling itself untouched — no
+     overflow:hidden anywhere, so wheel/trackpad/keyboard/touch scrolling
+     all keep working exactly as before. overflow-x:hidden only suppresses
+     the horizontal scrollbar this same hiding can't reach directly (a
+     hidden vertical scrollbar's width would otherwise sometimes cause a
+     few px of horizontal overflow); vertical scrolling is unaffected. */
+  html,
+  body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overflow-x: hidden;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
 }
