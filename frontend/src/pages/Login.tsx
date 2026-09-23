@@ -65,7 +65,7 @@ export function Login() {
           className="relative z-10 flex h-full min-h-screen flex-col p-10 xl:p-14"
         >
           <motion.div variants={itemVariants}>
-            <Link to="/" className="flex w-fit items-center gap-3 text-base font-semibold" aria-label="CodeTrace home">
+            <Link to="/" className="flex w-fit cursor-pointer items-center gap-3 text-base font-semibold" aria-label="CodeTrace home">
               <BrandMark /> CodeTrace
             </Link>
           </motion.div>
@@ -114,12 +114,12 @@ export function Login() {
 
       <section className="relative flex min-h-screen flex-col">
         <div className="flex h-20 items-center justify-between border-b border-hairline px-5 lg:border-b-0 lg:px-10">
-          <Link to="/" className="flex items-center gap-3 text-sm font-semibold lg:hidden" aria-label="CodeTrace home">
+          <Link to="/" className="flex cursor-pointer items-center gap-3 text-sm font-semibold lg:hidden" aria-label="CodeTrace home">
             <BrandMark /> CodeTrace
           </Link>
           <Link
             to="/"
-            className="ml-auto flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-body transition-colors hover:bg-canvas-soft hover:text-ink"
+            className="ml-auto flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-sm font-medium text-body transition-colors hover:bg-canvas-soft hover:text-ink"
           >
             <ArrowLeft size={14} /> Home
           </Link>
@@ -162,11 +162,11 @@ export function Login() {
 
             <p className="mt-8 text-center text-[11px] leading-5 text-body">
               By continuing, you agree to the{" "}
-              <a href="#" className="text-body underline underline-offset-4 hover:text-ink">
+              <a href="#" className="cursor-pointer text-body underline underline-offset-4 hover:text-ink">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a href="#" className="text-body underline underline-offset-4 hover:text-ink">
+              <a href="#" className="cursor-pointer text-body underline underline-offset-4 hover:text-ink">
                 Privacy Policy
               </a>
               .
@@ -175,11 +175,11 @@ export function Login() {
         </div>
 
         <div className="flex items-center justify-center gap-5 border-t border-hairline px-5 py-5 font-mono text-[10px] text-mute lg:border-t-0">
-          <a href="#" className="transition-colors hover:text-ink">
+          <a href="#" className="cursor-pointer transition-colors hover:text-ink">
             Privacy
           </a>
           <span className="size-0.5 rounded-full bg-mute" />
-          <a href="#" className="transition-colors hover:text-ink">
+          <a href="#" className="cursor-pointer transition-colors hover:text-ink">
             Support
           </a>
         </div>

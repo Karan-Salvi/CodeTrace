@@ -93,7 +93,7 @@ function ReviewWindow() {
           <div className="mt-7 border-t border-hairline pt-5">
             <p className="font-mono text-[10px] uppercase text-mute">Verified evidence</p>
             {["payment.ts:39", "stripe.ts:112–118"].map((item) => (
-              <a key={item} href="#evidence" className="mt-3 flex items-center justify-between rounded-md border border-hairline bg-canvas-soft px-3 py-2.5 text-xs text-ink hover:border-ink/30">
+              <a key={item} href="#evidence" className="mt-3 flex cursor-pointer items-center justify-between rounded-md border border-hairline bg-canvas-soft px-3 py-2.5 text-xs text-ink hover:border-ink/30">
                 <span>{item}</span>
                 <ChevronRight size={13} />
               </a>
@@ -147,12 +147,12 @@ export function Landing() {
     <div className="font-landing min-h-screen overflow-x-hidden bg-canvas text-ink">
       <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center px-5 lg:px-8">
-          <a href="#top" className="flex items-center gap-2.5 text-sm font-semibold" aria-label="CodeTrace home">
+          <a href="#top" className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold" aria-label="CodeTrace home">
             <BrandMark /> CodeTrace
           </a>
           <nav className="ml-10 hidden items-center gap-7 text-sm text-body md:flex" aria-label="Main navigation">
             {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} className="hover:text-ink">
+              <a key={link.href} href={link.href} className="cursor-pointer hover:text-ink">
                 {link.label}
               </a>
             ))}
@@ -176,7 +176,7 @@ export function Landing() {
         {menuOpen && (
           <nav className="grid border-t border-hairline bg-canvas px-5 py-2 md:hidden">
             {[...NAV_LINKS, { href: "#faq", label: "FAQ" }].map((item) => (
-              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="border-b border-hairline py-3 text-sm text-ink last:border-0">
+              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="cursor-pointer border-b border-hairline py-3 text-sm text-ink last:border-0">
                 {item.label}
               </a>
             ))}
@@ -501,7 +501,7 @@ export function Landing() {
         <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
           <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
             <div className="sm:col-span-2 lg:col-span-1">
-              <a href="#top" className="flex items-center gap-2.5 text-sm font-semibold text-ink" aria-label="CodeTrace home">
+              <a href="#top" className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-ink" aria-label="CodeTrace home">
                 <BrandMark /> CodeTrace
               </a>
               <p className="mt-4 max-w-80 text-sm leading-6 text-body">
@@ -511,32 +511,32 @@ export function Landing() {
             <div>
               <p className="font-mono text-[10px] uppercase text-mute">Product</p>
               <ul className="mt-4 space-y-2.5 text-sm">
-                <li><a href="#product" className="text-body hover:text-ink">Features</a></li>
-                <li><a href="#workflow" className="text-body hover:text-ink">Workflow</a></li>
-                <li><a href="#pricing" className="text-body hover:text-ink">Pricing</a></li>
+                <li><a href="#product" className="cursor-pointer text-body hover:text-ink">Features</a></li>
+                <li><a href="#workflow" className="cursor-pointer text-body hover:text-ink">Workflow</a></li>
+                <li><a href="#pricing" className="cursor-pointer text-body hover:text-ink">Pricing</a></li>
               </ul>
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase text-mute">Resources</p>
               <ul className="mt-4 space-y-2.5 text-sm">
-                <li><a href="#faq" className="text-body hover:text-ink">FAQ</a></li>
-                <li><Link to="/benchmarks" className="text-body hover:text-ink">Benchmarks</Link></li>
-                <li><a href="https://github.com" target="_blank" rel="noreferrer" className="text-body hover:text-ink">GitHub</a></li>
+                <li><a href="#faq" className="cursor-pointer text-body hover:text-ink">FAQ</a></li>
+                <li><Link to="/benchmarks" className="cursor-pointer text-body hover:text-ink">Benchmarks</Link></li>
+                <li><a href="https://github.com" target="_blank" rel="noreferrer" className="cursor-pointer text-body hover:text-ink">GitHub</a></li>
               </ul>
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase text-mute">Legal</p>
               <ul className="mt-4 space-y-2.5 text-sm">
-                <li><a href="#" className="text-body hover:text-ink">Privacy</a></li>
-                <li><a href="#" className="text-body hover:text-ink">Terms</a></li>
+                <li><a href="#" className="cursor-pointer text-body hover:text-ink">Privacy</a></li>
+                <li><a href="#" className="cursor-pointer text-body hover:text-ink">Terms</a></li>
               </ul>
             </div>
           </div>
           <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-hairline pt-8 text-xs text-mute sm:flex-row sm:items-center">
             <span>© 2026 CodeTrace. All rights reserved.</span>
             <div className="flex items-center gap-5">
-              <a href="#" className="hover:text-ink">Status</a>
-              <a href="#" className="hover:text-ink">Support</a>
+              <a href="#" className="cursor-pointer hover:text-ink">Status</a>
+              <a href="#" className="cursor-pointer hover:text-ink">Support</a>
             </div>
           </div>
         </div>
