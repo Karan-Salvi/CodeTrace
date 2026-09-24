@@ -13,8 +13,24 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import { BrandMark } from "../components/ui/BrandMark";
 import { CodebaseChat } from "../components/landing/CodebaseChat";
+
+const fadeInUp: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const staggerItem: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+};
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -133,6 +149,7 @@ function TraceDiagram() {
 export function Landing() {
   const { token, isLoading } = useAuth();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [annual, setAnnual] = useState(true);
   const [activeFaq, setActiveFaq] = useState(0);
@@ -173,15 +190,23 @@ export function Landing() {
             {menuOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
         </div>
-        {menuOpen && (
-          <nav className="grid border-t border-hairline bg-canvas px-5 py-2 md:hidden">
-            {[...NAV_LINKS, { href: "#faq", label: "FAQ" }].map((item) => (
-              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="cursor-pointer border-b border-hairline py-3 text-sm text-ink last:border-0">
-                {item.label}
-              </a>
-            ))}
-          </nav>
-        )}
+        <AnimatePresence initial={false}>
+          {menuOpen && (
+            <motion.nav
+              initial={shouldReduceMotion ? undefined : { height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={shouldReduceMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="grid overflow-hidden border-t border-hairline bg-canvas px-5 py-2 md:hidden"
+            >
+              {[...NAV_LINKS, { href: "#faq", label: "FAQ" }].map((item) => (
+                <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="cursor-pointer border-b border-hairline py-3 text-sm text-ink last:border-0">
+                  {item.label}
+                </a>
+              ))}
+            </motion.nav>
+          )}
+        </AnimatePresence>
       </header>
 
       <main id="top">
@@ -222,31 +247,49 @@ export function Landing() {
         </section>
 
         <section className="border-b border-hairline">
-          <div className="mx-auto grid max-w-7xl sm:grid-cols-3">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={staggerContainer}
+            className="mx-auto grid max-w-7xl sm:grid-cols-3"
+          >
             {([
               ["Risk, not noise", "Six review categories keep style nits out of your pull requests."],
               ["Evidence first", "Every finding links to the exact file and line that supports it."],
               ["Fast by design", "Only changed syntax-level chunks are indexed again."],
             ] as const).map(([title, copy], index) => (
-              <article key={title} className="border-b border-hairline p-7 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0 lg:p-9">
+              <motion.article
+                key={title}
+                variants={staggerItem}
+                whileHover={shouldReduceMotion ? undefined : { y: -4 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="border-b border-hairline p-7 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0 lg:p-9"
+              >
                 <span className="font-mono text-[10px] text-mute">0{index + 1}</span>
                 <h2 className="mt-8 font-semibold text-ink">{title}</h2>
                 <p className="mt-2 text-sm leading-6 text-body">{copy}</p>
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         <section id="product" className="border-b border-hairline">
           <div className="mx-auto max-w-7xl border-x border-hairline">
             <div className="grid lg:grid-cols-2">
-              <div className="flex min-h-[390px] flex-col justify-center border-b border-hairline p-8 lg:border-r lg:border-b-0 lg:p-14">
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-80px" }}
+                variants={fadeInUp}
+                className="flex min-h-[390px] flex-col justify-center border-b border-hairline p-8 lg:border-r lg:border-b-0 lg:p-14"
+              >
                 <p className="section-label">Repository context</p>
                 <h2 className="mt-5 max-w-128 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">Follow the change beyond the diff.</h2>
                 <p className="mt-6 max-w-112 leading-7 text-body">
                   CodeTrace traverses callers, imports, and state boundaries to reveal effects that a line-by-line review cannot see.
                 </p>
-              </div>
+              </motion.div>
               <TraceDiagram />
             </div>
           </div>
@@ -254,7 +297,13 @@ export function Landing() {
 
         <section id="evidence" className="border-b border-hairline">
           <div className="mx-auto max-w-7xl border-x border-hairline">
-            <div className="border-b border-hairline px-6 py-20 text-center lg:py-28">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              variants={fadeInUp}
+              className="border-b border-hairline px-6 py-20 text-center lg:py-28"
+            >
               <p className="section-label">Verified answers</p>
               <h2 className="mx-auto mt-5 max-w-192 text-4xl font-semibold tracking-tight text-ink sm:text-6xl">
                 Ask the codebase.
@@ -262,7 +311,7 @@ export function Landing() {
                 Inspect the answer.
               </h2>
               <p className="mx-auto mt-6 max-w-144 text-body">No mystery sources. Each answer stays anchored to code that exists on the branch you are reviewing.</p>
-            </div>
+            </motion.div>
             <div className="grid lg:grid-cols-[0.4fr_0.6fr]">
               <div className="border-b border-hairline p-6 lg:border-r lg:border-b-0 lg:p-10">
                 <p className="font-mono text-[10px] uppercase text-mute">Question</p>
@@ -299,20 +348,32 @@ export function Landing() {
 
         <section id="chat" className="border-b border-hairline">
           <div className="mx-auto max-w-7xl border-x border-hairline px-5 py-20 lg:px-8 lg:py-28">
-            <div className="mb-12 text-center">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              variants={fadeInUp}
+              className="mb-12 text-center"
+            >
               <p className="section-label">Chat</p>
               <h2 className="mx-auto mt-5 max-w-168 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">More powerful with your codebase.</h2>
               <p className="mx-auto mt-5 max-w-144 text-body">
                 Ask anything. Pick a topic below or type your own question — answers come back with verifiable source citations.
               </p>
-            </div>
+            </motion.div>
             <CodebaseChat />
           </div>
         </section>
 
         <section id="workflow" className="border-b border-hairline">
           <div className="mx-auto max-w-7xl border-x border-hairline">
-            <div className="grid border-b border-hairline lg:grid-cols-[0.42fr_0.58fr]">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              variants={fadeInUp}
+              className="grid border-b border-hairline lg:grid-cols-[0.42fr_0.58fr]"
+            >
               <div className="border-b border-hairline p-8 lg:border-r lg:border-b-0 lg:p-14">
                 <p className="section-label">The indexing pipeline</p>
                 <h2 className="mt-5 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
@@ -326,16 +387,28 @@ export function Landing() {
                   Syntax-aware indexing makes the repository searchable by structure. Content hashes ensure a one-line edit never triggers a full re-index.
                 </p>
               </div>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+            </motion.div>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-60px" }}
+              variants={staggerContainer}
+              className="grid sm:grid-cols-2 lg:grid-cols-4"
+            >
               {pipeline.map(([number, title, copy]) => (
-                <article key={number} className="border-b border-hairline p-7 sm:border-r lg:border-b-0 lg:p-8">
+                <motion.article
+                  key={number}
+                  variants={staggerItem}
+                  whileHover={shouldReduceMotion ? undefined : { y: -4 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="border-b border-hairline p-7 sm:border-r lg:border-b-0 lg:p-8"
+                >
                   <span className="font-mono text-[10px] text-positive">{number}</span>
                   <h3 className="mt-12 font-semibold text-ink">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-body">{copy}</p>
-                </article>
+                </motion.article>
               ))}
-            </div>
+            </motion.div>
             <div className="grid border-t border-hairline lg:grid-cols-2">
               <div className="border-b border-hairline p-8 lg:border-r lg:border-b-0 lg:p-12">
                 <div className="flex items-center gap-3">
@@ -362,7 +435,13 @@ export function Landing() {
 
         <section id="pricing" className="border-b border-hairline">
           <div className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
-            <div className="text-center">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              variants={fadeInUp}
+              className="text-center"
+            >
               <p className="section-label">Pricing</p>
               <h2 className="mt-5 text-4xl font-semibold tracking-tight text-ink sm:text-6xl">Start reviewing for free.</h2>
               <p className="mx-auto mt-5 max-w-144 text-body">Upgrade when your team needs private repositories and pull request write-back.</p>
@@ -380,9 +459,20 @@ export function Landing() {
                   Annual · save 20%
                 </button>
               </div>
-            </div>
-            <div className="mx-auto mt-14 grid max-w-224 overflow-hidden rounded-xl border border-hairline md:grid-cols-2">
-              <article className="border-b border-hairline p-7 md:border-r md:border-b-0 lg:p-9">
+            </motion.div>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-60px" }}
+              variants={staggerContainer}
+              className="mx-auto mt-14 grid max-w-224 overflow-hidden rounded-xl border border-hairline md:grid-cols-2"
+            >
+              <motion.article
+                variants={staggerItem}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="border-b border-hairline p-7 md:border-r md:border-b-0 lg:p-9"
+              >
                 <p className="font-mono text-[10px] uppercase text-mute">Personal</p>
                 <p className="mt-7 text-4xl font-semibold text-ink">$0</p>
                 <p className="mt-2 text-sm text-body">For public projects and evaluation.</p>
@@ -397,14 +487,31 @@ export function Landing() {
                     </li>
                   ))}
                 </ul>
-              </article>
-              <article className="bg-canvas-soft p-7 lg:p-9">
+              </motion.article>
+              <motion.article
+                variants={staggerItem}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="bg-canvas-soft p-7 lg:p-9"
+              >
                 <div className="flex items-center justify-between">
                   <p className="font-mono text-[10px] uppercase text-mute">Teams</p>
                   <span className="rounded-full border border-hairline px-2 py-1 font-mono text-[9px] text-body">Recommended</span>
                 </div>
-                <p className="mt-7 text-4xl font-semibold text-ink">
-                  ${annual ? "15" : "19"}
+                <p className="mt-7 flex items-baseline text-4xl font-semibold text-ink">
+                  $
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={annual ? "annual" : "monthly"}
+                      initial={shouldReduceMotion ? undefined : { opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={shouldReduceMotion ? undefined : { opacity: 0, y: 6 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="inline-block"
+                    >
+                      {annual ? "15" : "19"}
+                    </motion.span>
+                  </AnimatePresence>
                   <span className="text-sm font-normal text-body"> / developer</span>
                 </p>
                 <p className="mt-2 text-sm text-body">For teams shipping private code.</p>
@@ -419,13 +526,19 @@ export function Landing() {
                     </li>
                   ))}
                 </ul>
-              </article>
-            </div>
+              </motion.article>
+            </motion.div>
           </div>
         </section>
 
         <section id="faq">
-          <div className="mx-auto grid max-w-256 gap-12 px-5 py-24 lg:grid-cols-[0.35fr_0.65fr] lg:px-8 lg:py-28">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            variants={fadeInUp}
+            className="mx-auto grid max-w-256 gap-12 px-5 py-24 lg:grid-cols-[0.35fr_0.65fr] lg:px-8 lg:py-28"
+          >
             <div>
               <p className="section-label">FAQ</p>
               <h2 className="mt-4 text-3xl font-semibold text-ink">
@@ -445,18 +558,36 @@ export function Landing() {
                     <span className="whitespace-normal pr-5 text-ink">{question}</span>
                     <ChevronDown size={16} className={`shrink-0 text-mute transition-transform ${activeFaq === index ? "rotate-180" : ""}`} />
                   </button>
-                  {activeFaq === index && <p className="max-w-144 pb-6 text-sm leading-7 text-body">{answer}</p>}
+                  <AnimatePresence initial={false}>
+                    {activeFaq === index && (
+                      <motion.div
+                        initial={shouldReduceMotion ? undefined : { height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={shouldReduceMotion ? undefined : { height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                        <p className="max-w-144 pb-6 text-sm leading-7 text-body">{answer}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </section>
 
         <section className="relative overflow-hidden border-t border-hairline">
           <div className="bg-cta-radial pointer-events-none absolute inset-0" />
           <div className="relative mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32">
             <div className="flex flex-col items-start justify-between gap-12 lg:flex-row lg:items-end">
-              <div className="max-w-168">
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-80px" }}
+                variants={fadeInUp}
+                className="max-w-168"
+              >
                 <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas-soft px-3 py-1.5 text-xs text-body">
                   <span className="size-1.5 rounded-full bg-positive" />
                   Free for public repositories
@@ -477,8 +608,14 @@ export function Landing() {
                     View a sample review <ArrowRight size={15} />
                   </Link>
                 </div>
-              </div>
-              <div className="w-full max-w-112 overflow-hidden rounded-xl border border-hairline bg-canvas-soft-2 font-mono text-xs shadow-window lg:w-auto">
+              </motion.div>
+              <motion.div
+                initial={shouldReduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.98 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+                className="w-full max-w-112 overflow-hidden rounded-xl border border-hairline bg-canvas-soft-2 font-mono text-xs shadow-window lg:w-auto"
+              >
                 <div className="flex h-10 items-center gap-1.5 border-b border-hairline px-4">
                   <span className="size-2.5 rounded-full bg-hairline" />
                   <span className="size-2.5 rounded-full bg-hairline" />
@@ -491,7 +628,7 @@ export function Landing() {
                   <p><span className="text-error">!</span> 1 high-risk consequence found</p>
                   <p className="text-mute">— payment.ts:39 · stripe.ts:112</p>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
