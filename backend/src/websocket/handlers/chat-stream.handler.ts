@@ -57,13 +57,21 @@ export async function handleChatMessage(ws: WebSocket, raw: string): Promise<voi
 
   try {
     const result = await askQuestion(message.repositoryId, message.conversationId, message.question);
-    ws.send(JSON.stringify({ type: "chat:complete", answer: result.answer, citations: result.citations }));
+    // askQuestion already persisted the answer — if the socket died while
+    // it was running (proxy timeout, network drop), there's no live
+    // client to notify; the frontend picks it up on its next reconnect/
+    // reload via the regular messages fetch instead of this crashing.
+    if (ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify({ type: "chat:complete", answer: result.answer, citations: result.citations }));
+    }
   } catch (err) {
-    ws.send(
-      JSON.stringify({
-        type: "error",
-        message: err instanceof Error ? err.message : "Chat failed",
-      })
-    );
+    if (ws.readyState === ws.OPEN) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          message: err instanceof Error ? err.message : "Chat failed",
+        })
+      );
+    }
   }
 }
