@@ -55,6 +55,51 @@ function citationsToMarkdownLinks(
   });
 }
 
+// Backend has no phase-by-phase progress events (one blocking askQuestion()
+// call, see chat-stream.handler.ts) — these phrases are cosmetic, cycling
+// on a timer rather than tracking anything real, so the wait (which can now
+// legitimately run long, see the nginx /ws timeout fix) feels alive instead
+// of frozen on 3 static dots.
+const THINKING_PHRASES = [
+  "Parsing symbols...",
+  "Tracing imports...",
+  "Ranking chunks...",
+  "Leveling up context...",
+  "Rolling for insight...",
+  "Collecting XP from the codebase...",
+  "Dodging dead ends...",
+  "Assembling the final combo...",
+  "Drafting answer...",
+];
+
+function ThinkingIndicator() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % THINKING_PHRASES.length);
+    }, 1600);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-xs text-mute text-[14px] px-md py-sm">
+      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={index}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2 }}
+        >
+          {THINKING_PHRASES[index]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface RepoRef {
   owner: string;
   name: string;
@@ -618,11 +663,7 @@ export function RepositoryChat() {
           // (the backend doesn't stream tokens) — once it arrives,
           // StreamingMarkdown above fakes the typing motion client-side.
           <div className="flex justify-start">
-            <div className="px-md py-sm text-mute text-[14px] flex items-center gap-xs">
-              <span className="inline-block w-1.5 h-1.5 bg-mute rounded-full animate-pulse" />
-              <span className="inline-block w-1.5 h-1.5 bg-mute rounded-full animate-pulse [animation-delay:150ms]" />
-              <span className="inline-block w-1.5 h-1.5 bg-mute rounded-full animate-pulse [animation-delay:300ms]" />
-            </div>
+            <ThinkingIndicator />
           </div>
         )}
         <div ref={messagesEndRef} />
