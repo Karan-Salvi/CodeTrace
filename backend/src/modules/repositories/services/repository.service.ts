@@ -5,6 +5,8 @@ import { enqueueIndexJob } from "../../../queues/producers/index-job.producer.js
 import { mintInstallationToken, listInstallationRepositories, type GithubRepo } from "./github-app.service.js";
 import type { ConnectRepositoryInput } from "../types/repository.types.js";
 
+const MAX_REPOSITORIES_PER_USER = 2;
+
 export async function connectRepository(userId: string, input: ConnectRepositoryInput) {
   const installation = await getActiveInstallation(input.installationId);
   if (!installation) {
@@ -12,6 +14,14 @@ export async function connectRepository(userId: string, input: ConnectRepository
   }
   if (installation.userId !== userId) {
     throw AppError.forbidden("You do not own this installation");
+  }
+
+  const count = await prisma.repository.count({ where: { userId } });
+  if (count >= MAX_REPOSITORIES_PER_USER) {
+    throw AppError.conflict(
+      "REPOSITORY_LIMIT_REACHED",
+      `You can connect at most ${MAX_REPOSITORIES_PER_USER} repositories`
+    );
   }
 
   const repository = await prisma.repository.create({
