@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../../core/middlewares/auth.middleware.js";
 import { requireInternalAuth } from "../../../core/middlewares/internal-auth.middleware.js";
+import { createRateLimiter } from "../../../core/middlewares/rate-limit.middleware.js";
 import { asyncHandler } from "../../../core/utils/async-handler.js";
 import {
   postRepository,
@@ -19,6 +20,15 @@ import { getInstallationToken } from "../controllers/internal.controller.js";
 
 export const repositoriesRoutes = Router();
 
+// Repo connect triggers GitHub App API calls per request — cap it well
+// above the app's own 2-repo-per-user limit so a legitimate user is never
+// blocked, while still bounding flood/cost abuse against the GitHub API.
+const connectRepositoryRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  name: "connect-repository",
+});
+
 repositoriesRoutes.get("/repositories/installations", requireAuth, asyncHandler(getInstallations));
 repositoriesRoutes.get(
   "/repositories/installations/:id/available-repos",
@@ -26,7 +36,7 @@ repositoriesRoutes.get(
   asyncHandler(getAvailableRepos)
 );
 
-repositoriesRoutes.post("/repositories", requireAuth, asyncHandler(postRepository));
+repositoriesRoutes.post("/repositories", requireAuth, connectRepositoryRateLimiter, asyncHandler(postRepository));
 repositoriesRoutes.get("/repositories", requireAuth, asyncHandler(getRepositories));
 repositoriesRoutes.delete("/repositories/:id", requireAuth, asyncHandler(deleteRepositoryHandler));
 

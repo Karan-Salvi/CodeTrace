@@ -1,15 +1,26 @@
+import type { Request } from "express";
 import rateLimit from "express-rate-limit";
 import { RedisStore, type RedisReply } from "rate-limit-redis";
 import { redis } from "../../config/redis.js";
 import { sendError } from "../utils/response.js";
 
-export function createRateLimiter(opts: { windowMs: number; max: number; name: string }) {
+export function createRateLimiter(opts: {
+  windowMs: number;
+  max: number;
+  name: string;
+  keyGenerator?: (req: Request) => string;
+}) {
   return rateLimit({
     windowMs: opts.windowMs,
     max: opts.max,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id ?? "anonymous",
+    // Pre-auth routes (login start/callback, refresh, logout) have no
+    // req.user yet, so the default keyed-by-user limiter would bucket
+    // every anonymous caller together under one shared "anonymous" quota
+    // — callers needing per-IP limiting (no user identity yet) pass their
+    // own keyGenerator instead.
+    keyGenerator: opts.keyGenerator ?? ((req: Request) => req.user?.id ?? "anonymous"),
     store: new RedisStore({
       sendCommand: (command: string, ...args: string[]) =>
         redis.call(command, ...args) as Promise<RedisReply>,

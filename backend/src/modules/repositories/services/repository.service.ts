@@ -24,25 +24,44 @@ export async function connectRepository(userId: string, input: ConnectRepository
     );
   }
 
-  const repository = await prisma.repository.create({
-    data: {
-      userId,
-      installationId: input.installationId,
-      owner: input.owner,
-      name: input.name,
-      githubUrl: input.githubUrl,
-      defaultBranch: input.defaultBranch,
-    },
-  });
-
   // Connecting a repo must kick off its first index — otherwise it sits
   // at the default PENDING status forever with no job ever enqueued, and
   // the frontend's Re-index button treats PENDING as "already indexing"
-  // (non-terminal) so it's permanently disabled too.
-  const indexJob = await prisma.indexJob.create({
-    data: { repositoryId: repository.id, type: "FULL", status: "PENDING" },
+  // (non-terminal) so it's permanently disabled too. Both rows are created
+  // in one transaction so a mid-write crash can't leave a repository with
+  // no index job at all.
+  const { repository, indexJob } = await prisma.$transaction(async (tx) => {
+    const repository = await tx.repository.create({
+      data: {
+        userId,
+        installationId: input.installationId,
+        owner: input.owner,
+        name: input.name,
+        githubUrl: input.githubUrl,
+        defaultBranch: input.defaultBranch,
+      },
+    });
+    const indexJob = await tx.indexJob.create({
+      data: { repositoryId: repository.id, type: "FULL", status: "PENDING" },
+    });
+    return { repository, indexJob };
   });
-  await enqueueIndexJob({ jobId: indexJob.id, repositoryId: repository.id, type: "FULL" });
+
+  // enqueueIndexJob is a Redis call, not part of the DB transaction above —
+  // if it throws, both the job and the repository would otherwise be stuck
+  // at PENDING forever with nothing ever consuming it, and PENDING is in
+  // index-job.service.ts's NON_TERMINAL_STATUSES so re-index stays
+  // permanently blocked too. Mark both FAILED (terminal, and re-index
+  // already treats FAILED as retryable) instead of leaving that trap.
+  try {
+    await enqueueIndexJob({ jobId: indexJob.id, repositoryId: repository.id, type: "FULL" });
+  } catch (error) {
+    await prisma.$transaction([
+      prisma.indexJob.update({ where: { id: indexJob.id }, data: { status: "FAILED" } }),
+      prisma.repository.update({ where: { id: repository.id }, data: { status: "FAILED" } }),
+    ]);
+    throw error;
+  }
 
   return repository;
 }

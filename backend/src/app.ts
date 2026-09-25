@@ -20,6 +20,12 @@ export function createApp() {
   // with DevTools' Disable Cache on, breaks with it off": disabling both
   // outright removes any chance of the browser reusing a prior response.
   app.set("etag", false);
+  // Production always sits behind nginx (infra/docker-compose.single-vm.yml)
+  // — without this, req.ip resolves to nginx's own socket address for every
+  // request, collapsing all users behind the proxy into one IP bucket for
+  // any IP-keyed rate limiter (auth.routes.ts). Trust exactly one hop, not
+  // an arbitrary X-Forwarded-For chain a client could spoof.
+  app.set("trust proxy", 1);
   app.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
